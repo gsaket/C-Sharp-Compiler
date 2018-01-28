@@ -102,7 +102,7 @@ RankSpecifier         "["{WhiteSpace}*"]"
 "default"    {return DEFAULT;}
 "do"        {return DO;}
 "else"      {return ELSE;}
-"flase"     {return FALSE;}
+"false"     {return FALSE;}
 "for"       {return FOR;}
 "foreach"    {return FOREACH;}
 "goto"      {return GOTO;}
