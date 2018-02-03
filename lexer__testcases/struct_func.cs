@@ -14,8 +14,9 @@ typedef struct
 
 public class test8{
      public static void Main(){
+          test8 tmp=new test8();
           T k;
-          f(k);
+          tmp.f(k);
           Console.ReadKey();
      }
      void f (T x)
