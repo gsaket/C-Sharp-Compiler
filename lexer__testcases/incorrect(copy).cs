@@ -1,7 +1,7 @@
 using System;
 
 class test2{
-	static void Main(string[] args) {
+	public static void Main(string[] args) {
          int i=6;
          for (;i<= 8 && i < 6.67 && i!= 7; i++){
          	int 0x123;
