@@ -1,4 +1,3 @@
-
 #include<bits/stdc++.h>
 
 using namespace std;
@@ -10,8 +9,8 @@ using namespace std;
 #define Y second
 
 /*
- Note: The first column in IR i.e, line numbers is 0-indexed
- Comma separated, without spaces
+Note: The first column in IR i.e, line numbers is 0-indexed
+Comma separated, without spaces
 */
 
 const int INF=1e9;
@@ -171,7 +170,6 @@ bool isInteger(string s)
 	return true;
 }
 
-
 string getLocation(string var)
 {
 	if(isInteger(var))
@@ -329,7 +327,6 @@ string genx86(vector<string> instr){
 				setAddressDescriptor(getRegisterDescriptor("%edx"),"mem");
 			}
 
-
 			x86 += "movl $0, %edx\n";
 			//string destreg = getRegister(line_no,result);
 			if(isInteger(operand1) && isInteger(operand2))
@@ -364,7 +361,309 @@ string genx86(vector<string> instr){
 			setRegisterDescriptor("%edx",result);
 			setAddressDescriptor(result,"%edx");
 		}
+	}
+	/////////////
+	// LEFT SHIFT
+	else if(op=="<<")
+	{
+		string result, operand1, operand2;
+		result = instr[2];
+		operand1 = instr[3];
+		operand2 = instr[4];
+		string destreg = getRegister(line_no,result);
+		if(isInteger(operand1) && isInteger(operand2))
+		{
+			int op1 = stringToInt(operand1);
+			int op2 = stringToInt(operand2);
+			int res = (op1<<op2);
+			x86+="movl $"+intToString(res)+", "+destreg+"\n";
+		}
+		else
+		{
+			string lop1 = getLocation(operand1);
+			string lop2 = getLocation(operand2);
+			x86 += "movl "+lop1+", "+destreg+"\n";
+			x86 += "shl "+lop2+", "+destreg+"\n";
+		}
+	}
+	/////////////
+	// SHIFT RIGHT
+	else if(op==">>")
+	{
+		string result, operand1, operand2;
+		result = instr[2];
+		operand1 = instr[3];
+		operand2 = instr[4];
+		string destreg = getRegister(line_no,result);
+		if(isInteger(operand1) && isInteger(operand2))
+		{
+			int op1 = stringToInt(operand1);
+			int op2 = stringToInt(operand2);
+			int res = (op1>>op2);
+			x86+="movl $"+intToString(res)+", "+destreg+"\n";
+		}
+		else
+		{
+			string lop1 = getLocation(operand1);
+			string lop2 = getLocation(operand2);
+			x86 += "movl "+lop1+", "+destreg+"\n";
+			x86 += "shr "+lop2+", "+destreg+"\n";
+		}
+	}
+	/////////////
+	// BITWISE AND
+	else if(op=="&&")
+	{
+		string result, operand1, operand2;
+		result = instr[2];
+		operand1 = instr[3];
+		operand2 = instr[4];
+		string destreg = getRegister(line_no,result);
+		if(isInteger(operand1) && isInteger(operand2))
+		{
+			int op1 = stringToInt(operand1);
+			int op2 = stringToInt(operand2);
+			int res = (op1&op2);
+			x86+="movl $"+intToString(res)+", "+destreg+"\n";
+		}
+		else
+		{
+			string lop1 = getLocation(operand1);
+			string lop2 = getLocation(operand2);
+			x86 += "movl "+lop1+", "+destreg+"\n";
+			x86 += "and "+lop2+", "+destreg+"\n";
+		}
+	}
+	/////////////
+	// BITWISE OR
+	else if(op=="||")
+	{
+		string result, operand1, operand2;
+		result = instr[2];
+		operand1 = instr[3];
+		operand2 = instr[4];
+		string destreg = getRegister(line_no,result);
+		if(isInteger(operand1) && isInteger(operand2))
+		{
+			int op1 = stringToInt(operand1);
+			int op2 = stringToInt(operand2);
+			int res = (op1|op2);
+			x86+="movl $"+intToString(res)+", "+destreg+"\n";
+		}
+		else
+		{
+			string lop1 = getLocation(operand1);
+			string lop2 = getLocation(operand2);
+			x86 += "movl "+lop1+", "+destreg+"\n";
+			x86 += "or "+lop2+", "+destreg+"\n";
+		}
+	}
+	/////////////
+	// NOT
+	else if(op=="~")
+	{
+		string result, operand1, operand2;
+		result = instr[2];
+		operand1 = instr[3];
+		string destreg = getRegister(line_no,result);
+		if(isInteger(operand1))
+		{
+			int op1 = stringToInt(operand1);
+			int res = (~op1);
+			x86+="movl $"+intToString(res)+", "+destreg+"\n";
+		}
+		else
+		{
+			string lop1 = getLocation(operand1);
+			x86 += "movl "+lop1+", "+destreg+"\n";
+			x86 += "not "+destreg+"\n";
+		}
+	}
+	//////////
+	// LEQ
+	else if(op == "<=")
+	{
+		string result, operand1, operand2;
+		result = instr[2];
+		operand1 = instr[3];
+		operand2 = instr[4];
 
+		string destreg = getRegister(line_no,result);
+		string LEQ = "LEQ"+intToString(line_no);
+		string NLEQ = "NLEQ"+intToString(line_no);
+		if(isInteger(operand1) && isInteger(operand2))
+		{
+			int leqres = (stringToInt(operand1)<=stringToInt(operand2));
+			x86 += "movl $"+intToString(leqres)+", "+destreg+"\n";
+		}
+		else
+		{
+			string lop1 = getLocation(operand1);
+			string lop2 = getLocation(operand2);
+			x86 += "movl "+lop2+", "+destreg+"\n";
+			x86 += "cmp "+lop1+", "+destreg+"\n";
+			x86 += "jle "+LEQ+"\n";
+			x86 += "movl $0, "+destreg+"\n";
+			x86 += "jmp "+NLEQ+"\n";
+			x86 += LEQ + ": \n";
+			x86 += "movl $1, "+destreg+"\n";
+			x86 += NLEQ +":\n";
+		}
+	}
+	//////////
+	// GEQ
+	else if(op == ">=")
+	{
+		string result, operand1, operand2;
+		result = instr[2];
+		operand1 = instr[3];
+		operand2 = instr[4];
+
+		string destreg = getRegister(line_no,result);
+		string GEQ = "GEQ"+intToString(line_no);
+		string NGEQ = "NGEQ"+intToString(line_no);
+		if(isInteger(operand1) && isInteger(operand2))
+		{
+			int leqres = (stringToInt(operand1)>=stringToInt(operand2));
+			x86 += "movl $"+intToString(leqres)+", "+destreg+"\n";
+		}
+		else
+		{
+			string lop1 = getLocation(operand1);
+			string lop2 = getLocation(operand2);
+			x86 += "movl "+lop2+", "+destreg+"\n";
+			x86 += "cmp "+lop1+", "+destreg+"\n";
+			x86 += "jge "+GEQ+"\n";
+			x86 += "movl $0, "+destreg+"\n";
+			x86 += "jmp "+NGEQ+"\n";
+			x86 += GEQ + ": \n";
+			x86 += "movl $1, "+destreg+"\n";
+			x86 += NGEQ +":\n";
+		}
+	}
+	//////////
+	// EQ
+	else if(op == "==")
+	{
+		string result, operand1, operand2;
+		result = instr[2];
+		operand1 = instr[3];
+		operand2 = instr[4];
+
+		string destreg = getRegister(line_no,result);
+		string EQ = "EQ"+intToString(line_no);
+		string NEQ = "NEQ"+intToString(line_no);
+		if(isInteger(operand1) && isInteger(operand2))
+		{
+			int leqres = (stringToInt(operand1)==stringToInt(operand2));
+			x86 += "movl $"+intToString(leqres)+", "+destreg+"\n";
+		}
+		else
+		{
+			string lop1 = getLocation(operand1);
+			string lop2 = getLocation(operand2);
+			x86 += "movl "+lop2+", "+destreg+"\n";
+			x86 += "cmp "+lop1+", "+destreg+"\n";
+			x86 += "je "+EQ+"\n";
+			x86 += "movl $0, "+destreg+"\n";
+			x86 += "jmp "+NEQ+"\n";
+			x86 += EQ + ": \n";
+			x86 += "movl $1, "+destreg+"\n";
+			x86 += NEQ +":\n";
+		}
+	}
+	//////////
+	// NEQ
+	else if(op == "!=")
+	{
+		string result, operand1, operand2;
+		result = instr[2];
+		operand1 = instr[3];
+		operand2 = instr[4];
+
+		string destreg = getRegister(line_no,result);
+		string NEQ = "NEQ"+intToString(line_no);
+		string NNEQ = "NNEQ"+intToString(line_no);
+		if(isInteger(operand1) && isInteger(operand2))
+		{
+			int leqres = (stringToInt(operand1)!=stringToInt(operand2));
+			x86 += "movl $"+intToString(leqres)+", "+destreg+"\n";
+		}
+		else
+		{
+			string lop1 = getLocation(operand1);
+			string lop2 = getLocation(operand2);
+			x86 += "movl "+lop2+", "+destreg+"\n";
+			x86 += "cmp "+lop1+", "+destreg+"\n";
+			x86 += "jne "+NEQ+"\n";
+			x86 += "movl $0, "+destreg+"\n";
+			x86 += "jmp "+NNEQ+"\n";
+			x86 += NEQ + ": \n";
+			x86 += "movl $1, "+destreg+"\n";
+			x86 += NNEQ +":\n";
+		}
+	}
+	//////////
+	// LT
+	else if(op == "<")
+	{
+		string result, operand1, operand2;
+		result = instr[2];
+		operand1 = instr[3];
+		operand2 = instr[4];
+
+		string destreg = getRegister(line_no,result);
+		string LT = "LT"+intToString(line_no);
+		string NLT = "NLT"+intToString(line_no);
+		if(isInteger(operand1) && isInteger(operand2))
+		{
+			int leqres = (stringToInt(operand1)<stringToInt(operand2));
+			x86 += "movl $"+intToString(leqres)+", "+destreg+"\n";
+		}
+		else
+		{
+			string lop1 = getLocation(operand1);
+			string lop2 = getLocation(operand2);
+			x86 += "movl "+lop2+", "+destreg+"\n";
+			x86 += "cmp "+lop1+", "+destreg+"\n";
+			x86 += "jl "+LT+"\n";
+			x86 += "movl $0, "+destreg+"\n";
+			x86 += "jmp "+NLT+"\n";
+			x86 += LT + ": \n";
+			x86 += "movl $1, "+destreg+"\n";
+			x86 += NLT +":\n";
+		}
+	}
+	//////////
+	// GT
+	else if(op == ">")
+	{
+		string result, operand1, operand2;
+		result = instr[2];
+		operand1 = instr[3];
+		operand2 = instr[4];
+
+		string destreg = getRegister(line_no,result);
+		string GT = "GT"+intToString(line_no);
+		string NGT = "NGT"+intToString(line_no);
+		if(isInteger(operand1) && isInteger(operand2))
+		{
+			int leqres = (stringToInt(operand1)>stringToInt(operand2));
+			x86 += "movl $"+intToString(leqres)+", "+destreg+"\n";
+		}
+		else
+		{
+			string lop1 = getLocation(operand1);
+			string lop2 = getLocation(operand2);
+			x86 += "movl "+lop2+", "+destreg+"\n";
+			x86 += "cmp "+lop1+", "+destreg+"\n";
+			x86 += "jg "+GT+"\n";
+			x86 += "movl $0, "+destreg+"\n";
+			x86 += "jmp "+NGT+"\n";
+			x86 += GT + ": \n";
+			x86 += "movl $1, "+destreg+"\n";
+			x86 += NGT +":\n";
+		}
 	}
 	else if(op == "print")
 	{
@@ -385,7 +684,7 @@ int main(){
 		if(OneInstr == "")continue;
 		instructions.pb(parse(OneInstr));
 	}
-	
+
 
 	//initialize keywords and operations
 	init();
