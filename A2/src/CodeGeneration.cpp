@@ -10,7 +10,8 @@ using namespace std;
 
 /*
 Note: The first column in IR i.e, line numbers is 0-indexed
-Comma separated, without spaces
+	  Comma separated, without spaces
+	  The Labels in goto and ifgoto can be line numberes only!
 */
 
 const int INF=1e9;
@@ -665,6 +666,158 @@ string genx86(vector<string> instr){
 			x86 += NGT +":\n";
 		}
 	}
+	//////////
+	// EQUALS
+	else if(op == "=")
+	{
+		string result, operand1;
+		result = instr[2];
+		operand1 = instr[3];
+
+		string destreg = getRegister(line_no,result);
+		string lop1 = getLocation(operand1);
+		x86 += "movl "+lop1+", "+destreg+"\n";
+	}
+	//////////
+	// ifgoto
+	else if(op == "ifgoto")
+	{
+		string  relop,operand1,operand2,label;
+		relop = instr[2];
+		operand1 = instr[3];
+		operand2 = instr[4];
+		label = instr[5];
+		string lop1 = getLocation(operand1);
+		string lop2 = getLocation(operand2);
+		string destreg = getRegister(line_no,operand2);
+		if(lop2 == operand2 || lop2[0] == '$'){
+			x86 += "movl "+lop2+", "+destreg+"\n";
+		}
+		// Compare
+		x86 += "cmp "+lop1+", "+destreg+"\n";
+		// Spilling the registers
+		for(auto reg : Registers){
+			if(getRegisterDescriptor(reg) != "NULL"){
+				// spill this register into memory before jumping
+				string var = getRegisterDescriptor(reg);
+				x86 += "movl "+reg+", "+var+"\n";
+				setRegisterDescriptor(reg, "NULL");
+				setAddressDescriptor(var, "mem");
+			}
+		}
+		label = "Node"+label;
+		switch(relop){
+			case "<=":
+				x86 += "jle "+label+"\n";break;
+			case ">=":
+				x86 += "jge "+label+"\n";break;
+			case "==":
+				x86 += "je "+label+"\n";break;
+			case "<":
+				x86 += "jl "+label+"\n";break;
+			case ">":
+				x86 += "jg "+label+"\n";break;
+			case "!=":
+				x86 += "jne "+label+"\n";break;
+			default :
+				cerr<<"Unrecognised RELOP"<<endl;
+		}
+	}
+	//////////
+	// goto
+	else if(op == "goto")
+	{
+		string  label;
+		label = instr[2];
+		// Spilling the registers
+		for(auto reg : Registers){
+			if(getRegisterDescriptor(reg) != "NULL"){
+				// spill this register into memory before jumping
+				string var = getRegisterDescriptor(reg);
+				x86 += "movl "+reg+", "+var+"\n";
+				setRegisterDescriptor(reg, "NULL");
+				setAddressDescriptor(var, "mem");
+			}
+		}
+		label = "Node"+label;
+		x86 += "jmp "+label+"\n";
+	}
+	//////////
+	// call
+	else if(op == "call")
+	{
+		// line, call, funct, return_variable
+		string  func,rvar;
+		func = instr[2];
+		rvar = instr[3];
+		// Spilling the registers
+		for(auto reg : Registers){
+			if(getRegisterDescriptor(reg) != "NULL"){
+				// spill this register into memory before jumping
+				string var = getRegisterDescriptor(reg);
+				x86 += "movl "+reg+", "+var+"\n";
+				setRegisterDescriptor(reg, "NULL");
+				setAddressDescriptor(var, "mem");
+			}
+		}
+		x86 += "call "+func+"\n";
+		// If it is null then the return instr will also have null
+		if(rvar != "NULL"){
+			string lop = getLocation(rvar);
+			x86 += "movl %eax, "+lop+"\n";
+		}
+	}
+	//////////
+	// function
+	else if(op == "function")
+	{
+		// line, function, fname
+		string  func;
+		func = instr[2];
+		x86 += ".globl "+func+"\n";
+		x86 += ".type "+func+", @function\n";
+		x86 += func+":\n";
+		x86 += "pushl %ebp\n";
+		x86 += "movl %esp, %ebp\n";
+	}
+	//////////
+	// read
+	else if(op == "read")
+	{
+		// line, read, var
+		string  var;
+		var = instr[2];
+		// Spilling the registers
+		for(auto reg : Registers){
+			if(getRegisterDescriptor(reg) != "NULL"){
+				// spill this register into memory before jumping
+				string var = getRegisterDescriptor(reg);
+				x86 += "movl "+reg+", "+var+"\n";
+				setRegisterDescriptor(reg, "NULL");
+				setAddressDescriptor(var, "mem");
+			}
+		}
+		x86 += "movl $3, %eax\n";
+		x86 += "movl $0, %ebx\n";
+		x86 += "movl $" +var+", %ecx\n";
+		x86 +=  + "movl $1, %edx\n"
+		x86 +=  + "int $0x80\n"
+		x86 +=  + "subl $48, " + result + "\n"
+	}
+	//////////
+	// exit
+	else if(op == "exit")
+	{
+		x86 += "call exit\n";
+	}
+	//////////
+	// exit
+	else if(op == "exit")
+	{
+		x86 += "call exit\n";
+	}
+	//////////
+	// print
 	else if(op == "print")
 	{
 		//print statement
@@ -830,6 +983,8 @@ int main(){
 			// if variables dead after this change RegisterDescriptor
 		}
 		// Should we put data in all registers into memory after each basic block?
+		// Nope, this should be done before jumping, in ifgoto, goto, call
+		// We could also push the registers onto the stack and pop after the call returns
 	}
 	AssemblyCode+=DataSection+BssSection+TextSection;
 	cout<<AssemblyCode<<endl;
