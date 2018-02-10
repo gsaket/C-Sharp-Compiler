@@ -64,8 +64,8 @@ string getRegister(int instr, string var, string operand1 = "$$", string operand
 			return reg;
 		}
 		if(getRegisterDescriptor(reg) == "NULL"){
-			if(!isInteger(var))setRegisterDescriptor(reg, var);
-			if(!isInteger(var))setAddressDescriptor(var, reg);
+			//if(!isInteger(var))setRegisterDescriptor(reg, var);
+			//if(!isInteger(var))setAddressDescriptor(var, reg);
 			return reg;
 		}
 	}
@@ -245,6 +245,8 @@ string genx86(vector<string> instr){
 				x86 += "movl "+lop1+", "+destreg+"\n";
 				x86 += "subl "+lop2+", "+destreg+"\n";
 			}
+			if(!isInteger(result))setAddressDescriptor(result, destreg);
+			if(!isInteger(result))setRegisterDescriptor(destreg, result);
 		}
 		/////////////
 		//Multiplication
@@ -269,6 +271,8 @@ string genx86(vector<string> instr){
 					x86 += "imul "+lop2+", "+destreg+", "+destreg+"\n";
 				}
 			}
+			if(!isInteger(result))setAddressDescriptor(result, destreg);
+			if(!isInteger(result))setRegisterDescriptor(destreg, result);
 		}
 		/////////////
 		//Division
@@ -395,6 +399,8 @@ string genx86(vector<string> instr){
 			x86 += "movl "+lop1+", "+destreg+"\n";
 			x86 += "shl "+lop2+", "+destreg+"\n";
 		}
+		if(!isInteger(result))setAddressDescriptor(result, destreg);
+		if(!isInteger(result))setRegisterDescriptor(destreg, result);
 	}
 	/////////////
 	// SHIFT RIGHT
@@ -419,6 +425,8 @@ string genx86(vector<string> instr){
 			x86 += "movl "+lop1+", "+destreg+"\n";
 			x86 += "shr "+lop2+", "+destreg+"\n";
 		}
+		if(!isInteger(result))setAddressDescriptor(result, destreg);
+		if(!isInteger(result))setRegisterDescriptor(destreg, result);
 	}
 	/////////////
 	// BITWISE AND
@@ -443,6 +451,8 @@ string genx86(vector<string> instr){
 			x86 += "movl "+lop1+", "+destreg+"\n";
 			x86 += "and "+lop2+", "+destreg+"\n";
 		}
+		if(!isInteger(result))setAddressDescriptor(result, destreg);
+		if(!isInteger(result))setRegisterDescriptor(destreg, result);
 	}
 	/////////////
 	// BITWISE OR
@@ -467,6 +477,8 @@ string genx86(vector<string> instr){
 			x86 += "movl "+lop1+", "+destreg+"\n";
 			x86 += "or "+lop2+", "+destreg+"\n";
 		}
+		if(!isInteger(result))setAddressDescriptor(result, destreg);
+		if(!isInteger(result))setRegisterDescriptor(destreg, result);
 	}
 	/////////////
 	// NOT
@@ -489,6 +501,8 @@ string genx86(vector<string> instr){
 			x86 += "movl "+lop1+", "+destreg+"\n";
 			x86 += "not "+destreg+"\n";
 		}
+		if(!isInteger(result))setAddressDescriptor(result, destreg);
+		if(!isInteger(result))setRegisterDescriptor(destreg, result);
 	}
 	//////////
 	// LEQ
@@ -520,6 +534,8 @@ string genx86(vector<string> instr){
 			x86 += "movl $1, "+destreg+"\n";
 			x86 += NLEQ +":\n";
 		}
+		if(!isInteger(result))setAddressDescriptor(result, destreg);
+		if(!isInteger(result))setRegisterDescriptor(destreg, result);
 	}
 	//////////
 	// GEQ
@@ -551,6 +567,8 @@ string genx86(vector<string> instr){
 			x86 += "movl $1, "+destreg+"\n";
 			x86 += NGEQ +":\n";
 		}
+		if(!isInteger(result))setAddressDescriptor(result, destreg);
+		if(!isInteger(result))setRegisterDescriptor(destreg, result);
 	}
 	//////////
 	// EQ
@@ -582,6 +600,8 @@ string genx86(vector<string> instr){
 			x86 += "movl $1, "+destreg+"\n";
 			x86 += NEQ +":\n";
 		}
+		if(!isInteger(result))setAddressDescriptor(result, destreg);
+		if(!isInteger(result))setRegisterDescriptor(destreg, result);
 	}
 	//////////
 	// NEQ
@@ -613,6 +633,8 @@ string genx86(vector<string> instr){
 			x86 += "movl $1, "+destreg+"\n";
 			x86 += NNEQ +":\n";
 		}
+		if(!isInteger(result))setAddressDescriptor(result, destreg);
+		if(!isInteger(result))setRegisterDescriptor(destreg, result);
 	}
 	//////////
 	// LT
@@ -644,6 +666,8 @@ string genx86(vector<string> instr){
 			x86 += "movl $1, "+destreg+"\n";
 			x86 += NLT +":\n";
 		}
+		if(!isInteger(result))setAddressDescriptor(result, destreg);
+		if(!isInteger(result))setRegisterDescriptor(destreg, result);
 	}
 	//////////
 	// GT
@@ -675,6 +699,8 @@ string genx86(vector<string> instr){
 			x86 += "movl $1, "+destreg+"\n";
 			x86 += NGT +":\n";
 		}
+		if(!isInteger(result))setAddressDescriptor(result, destreg);
+		if(!isInteger(result))setRegisterDescriptor(destreg, result);
 	}
 	//////////
 	// EQUALS
@@ -687,6 +713,8 @@ string genx86(vector<string> instr){
 		string destreg = getRegister(line_no,result,operand1);
 		string lop1 = getLocation(operand1);
 		x86 += "movl "+lop1+", "+destreg+"\n";
+		if(!isInteger(result))setAddressDescriptor(result, destreg);
+		if(!isInteger(result))setRegisterDescriptor(destreg, result);
 	}
 	//////////
 	// ifgoto
@@ -702,6 +730,8 @@ string genx86(vector<string> instr){
 		string destreg = getRegister(line_no,operand1);
 		if(lop1 == operand1 || lop1[0] == '$'){
 			x86 += "movl "+lop1+", "+destreg+"\n";
+			if(!isInteger(operand1))setAddressDescriptor(operand1, destreg);
+			if(!isInteger(operand1))setRegisterDescriptor(destreg, operand1);
 		}
 		// Compare
 		x86 += "cmpl "+lop2+", "+destreg+"\n";
