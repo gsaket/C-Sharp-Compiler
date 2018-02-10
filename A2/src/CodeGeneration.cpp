@@ -855,7 +855,7 @@ int main(){
 
 	leaders.pb(0);
 	//cout<<"Number of Instructions are: "<<NumInstr<<endl;
-	for(int i=0; i<NumInstr; i++){
+	for(int i=0; i<NumInstr; i++){ //check
 		//cout<<i<<" ****"<<endl;
 		if(instructions[i][1] == "ifgoto"){
 			int si=(int)(instructions[i].size());
@@ -908,12 +908,12 @@ int main(){
 
 	for(int nd=0; nd<NumNodes; nd++){
 		for(auto idx : all_variables)
-			SymbolTable[idx]=mp(INF,"Dead");
+			SymbolTable[idx]=mp(INF,"Dead"); //check
 		for(int instr=nodes[nd].Y; instr>=nodes[nd].X; instr--){
 			vector<string> InstrLine = instructions[instr];
 			string Operator = InstrLine[1];
 			for(auto var : all_variables){
-				NextUse[instr][var] = SymbolTable[var].X;
+				NextUse[instr][var] = SymbolTable[var].X; //shouldnt it only be the vars involved in the instruction ?
 			}
 			if(ops_mth.find(Operator) != ops_mth.end())
 			{
@@ -950,7 +950,7 @@ int main(){
 				string a = InstrLine[2];
 				string b = InstrLine[3];
 				if(setfind(all_variables,a))
-					SymbolTable[a]=mp(instr, "Live");
+					SymbolTable[a]=mp(instr, "Live"); //check
 				if(setfind(all_variables,b))
 					SymbolTable[b]=mp(instr, "Live");
 			}
