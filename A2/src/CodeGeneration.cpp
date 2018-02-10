@@ -35,7 +35,9 @@ map<string, string> RegisterDescriptor;
 map<string, string> AddressDescriptor;
 
 string AssemblyCode,DataSection,BssSection,TextSection;
+string x86;
 
+bool isInteger(string s);
 
 void setRegisterDescriptor(string reg, string des){
 	RegisterDescriptor[reg]=des;
@@ -54,7 +56,7 @@ string getAddressDescriptor(string var){
 }
 
 // Lecture slide 29: Case 4? when is memory location returned?
-string getRegister(int instr, string var){
+string getRegister(int instr, string var, string operand1 = "$$", string operand2 = "$$"){
 	// Also, in X = Y op Z
 	// if Y has no next use, then use the register of Y
 	for(auto reg : Registers){
@@ -62,8 +64,8 @@ string getRegister(int instr, string var){
 			return reg;
 		}
 		if(getRegisterDescriptor(reg) == "NULL"){
-			setRegisterDescriptor(reg, var);
-			setAddressDescriptor(var, reg);
+			if(!isInteger(var))setRegisterDescriptor(reg, var);
+			if(!isInteger(var))setAddressDescriptor(var, reg);
 			return reg;
 		}
 	}
@@ -71,16 +73,18 @@ string getRegister(int instr, string var){
 	string var_;
 	for(auto reg_ : Registers){
 		var_ = getRegisterDescriptor(reg_);
+		if(var_ == operand1 || var_ == operand2)
+			continue;
 		if(FarthestNextUse == "" || NextUse[instr][var_] > NextUse[instr][FarthestNextUse]){
 			FarthestNextUse = var_;
 		}
 	}
 	string reg_ = getAddressDescriptor(var_);
 	// Spill this register reg_
-	AssemblyCode+="movl "+reg_+", "+var_+"\n";
+	x86 += "movl "+reg_+", "+var_+"\n";
 	setAddressDescriptor(var_, "mem");
-	setAddressDescriptor(var, reg_);
-	setRegisterDescriptor(reg_, var);
+	//if(!isInteger(var))setAddressDescriptor(var, reg_);
+	//if(!isInteger(var))setRegisterDescriptor(reg_, var);
 	return reg_;
 }
 
@@ -123,10 +127,13 @@ string intToString(int x)
 void init()
 {
 	keywords.insert("ifgoto");keywords.insert("goto");keywords.insert("return");
-	keywords.insert("call");keywords.insert("print");keywords.insert("label");
+	keywords.insert("call");keywords.insert("print");keywords.insert("read");
 	keywords.insert("<=");keywords.insert(">=");keywords.insert("==");
 	keywords.insert(">");keywords.insert("<");keywords.insert("!=");
 	keywords.insert("=");keywords.insert("function");keywords.insert("exit");
+
+	//arrays
+	keywords.insert("array");keywords.insert("member");keywords.insert("update");
 
 	ops_mth.insert("+");ops_mth.insert("-");ops_mth.insert("*");
 	ops_mth.insert("/");ops_mth.insert("%");ops_rel.insert("&&");
@@ -185,7 +192,7 @@ string getLocation(string var)
 
 
 string genx86(vector<string> instr){
-	string x86 = "";
+	x86 = "";
 	int line_no  = stringToInt(instr[0]);
 	string op = instr[1];
 	//cout<<op<<endl;
@@ -201,7 +208,7 @@ string genx86(vector<string> instr){
 		if(op == "+")
 		{
 			//cout<<"in plus"<<endl;
-			string destreg = getRegister(line_no,result);
+			string destreg = getRegister(line_no,result,operand1,operand2);
 			if(isInteger(operand1) && isInteger(operand2))
 			{
 				int op1 = stringToInt(operand1);
@@ -216,12 +223,14 @@ string genx86(vector<string> instr){
 				x86 += "movl "+lop1+", "+destreg+"\n";
 				x86 += "addl "+lop2+", "+destreg+"\n";
 			}
+			if(!isInteger(result))setAddressDescriptor(result, destreg);
+			if(!isInteger(result))setRegisterDescriptor(destreg, result);
 		}
 		/////////////
 		//Subtraction
 		if(op == "-")
 		{
-			string destreg = getRegister(line_no,result);
+			string destreg = getRegister(line_no,result,operand1,operand2);
 			if(isInteger(operand1) && isInteger(operand2))
 			{
 				int op1 = stringToInt(operand1);
@@ -241,7 +250,7 @@ string genx86(vector<string> instr){
 		//Multiplication
 		if(op == "*")
 		{
-			string destreg = getRegister(line_no,result);
+			string destreg = getRegister(line_no,result,operand1,operand2);
 			if(isInteger(operand1) && isInteger(operand2))
 			{
 				int op1 = stringToInt(operand1);
@@ -279,7 +288,7 @@ string genx86(vector<string> instr){
 
 
 			x86 += "movl $0, %edx\n";
-			//string destreg = getRegister(line_no,result);
+			//string destreg = getRegister(line_no,result,operand1,operand2);
 			if(isInteger(operand1) && isInteger(operand2))
 			{
 				int op1 = stringToInt(operand1);
@@ -329,7 +338,7 @@ string genx86(vector<string> instr){
 			}
 
 			x86 += "movl $0, %edx\n";
-			//string destreg = getRegister(line_no,result);
+			//string destreg = getRegister(line_no,result,operand1,operand2);
 			if(isInteger(operand1) && isInteger(operand2))
 			{
 				int op1 = stringToInt(operand1);
@@ -371,7 +380,7 @@ string genx86(vector<string> instr){
 		result = instr[2];
 		operand1 = instr[3];
 		operand2 = instr[4];
-		string destreg = getRegister(line_no,result);
+		string destreg = getRegister(line_no,result,operand1,operand2);
 		if(isInteger(operand1) && isInteger(operand2))
 		{
 			int op1 = stringToInt(operand1);
@@ -395,7 +404,7 @@ string genx86(vector<string> instr){
 		result = instr[2];
 		operand1 = instr[3];
 		operand2 = instr[4];
-		string destreg = getRegister(line_no,result);
+		string destreg = getRegister(line_no,result,operand1,operand2);
 		if(isInteger(operand1) && isInteger(operand2))
 		{
 			int op1 = stringToInt(operand1);
@@ -419,7 +428,7 @@ string genx86(vector<string> instr){
 		result = instr[2];
 		operand1 = instr[3];
 		operand2 = instr[4];
-		string destreg = getRegister(line_no,result);
+		string destreg = getRegister(line_no,result,operand1,operand2);
 		if(isInteger(operand1) && isInteger(operand2))
 		{
 			int op1 = stringToInt(operand1);
@@ -443,7 +452,7 @@ string genx86(vector<string> instr){
 		result = instr[2];
 		operand1 = instr[3];
 		operand2 = instr[4];
-		string destreg = getRegister(line_no,result);
+		string destreg = getRegister(line_no,result,operand1,operand2);
 		if(isInteger(operand1) && isInteger(operand2))
 		{
 			int op1 = stringToInt(operand1);
@@ -463,10 +472,11 @@ string genx86(vector<string> instr){
 	// NOT
 	else if(op=="~")
 	{
+		//cerr<<"In tilde"<<endl;
 		string result, operand1, operand2;
 		result = instr[2];
 		operand1 = instr[3];
-		string destreg = getRegister(line_no,result);
+		string destreg = getRegister(line_no,result,operand1);
 		if(isInteger(operand1))
 		{
 			int op1 = stringToInt(operand1);
@@ -489,7 +499,7 @@ string genx86(vector<string> instr){
 		operand1 = instr[3];
 		operand2 = instr[4];
 
-		string destreg = getRegister(line_no,result);
+		string destreg = getRegister(line_no,result,operand1,operand2);
 		string LEQ = "LEQ"+intToString(line_no);
 		string NLEQ = "NLEQ"+intToString(line_no);
 		if(isInteger(operand1) && isInteger(operand2))
@@ -501,8 +511,8 @@ string genx86(vector<string> instr){
 		{
 			string lop1 = getLocation(operand1);
 			string lop2 = getLocation(operand2);
-			x86 += "movl "+lop2+", "+destreg+"\n";
-			x86 += "cmp "+lop1+", "+destreg+"\n";
+			x86 += "movl "+lop1+", "+destreg+"\n";
+			x86 += "cmpl "+lop2+", "+destreg+"\n";
 			x86 += "jle "+LEQ+"\n";
 			x86 += "movl $0, "+destreg+"\n";
 			x86 += "jmp "+NLEQ+"\n";
@@ -520,7 +530,7 @@ string genx86(vector<string> instr){
 		operand1 = instr[3];
 		operand2 = instr[4];
 
-		string destreg = getRegister(line_no,result);
+		string destreg = getRegister(line_no,result,operand1,operand2);
 		string GEQ = "GEQ"+intToString(line_no);
 		string NGEQ = "NGEQ"+intToString(line_no);
 		if(isInteger(operand1) && isInteger(operand2))
@@ -532,8 +542,8 @@ string genx86(vector<string> instr){
 		{
 			string lop1 = getLocation(operand1);
 			string lop2 = getLocation(operand2);
-			x86 += "movl "+lop2+", "+destreg+"\n";
-			x86 += "cmp "+lop1+", "+destreg+"\n";
+			x86 += "movl "+lop1+", "+destreg+"\n";
+			x86 += "cmpl "+lop2+", "+destreg+"\n";
 			x86 += "jge "+GEQ+"\n";
 			x86 += "movl $0, "+destreg+"\n";
 			x86 += "jmp "+NGEQ+"\n";
@@ -551,7 +561,7 @@ string genx86(vector<string> instr){
 		operand1 = instr[3];
 		operand2 = instr[4];
 
-		string destreg = getRegister(line_no,result);
+		string destreg = getRegister(line_no,result,operand1,operand2);
 		string EQ = "EQ"+intToString(line_no);
 		string NEQ = "NEQ"+intToString(line_no);
 		if(isInteger(operand1) && isInteger(operand2))
@@ -563,8 +573,8 @@ string genx86(vector<string> instr){
 		{
 			string lop1 = getLocation(operand1);
 			string lop2 = getLocation(operand2);
-			x86 += "movl "+lop2+", "+destreg+"\n";
-			x86 += "cmp "+lop1+", "+destreg+"\n";
+			x86 += "movl "+lop1+", "+destreg+"\n";
+			x86 += "cmpl "+lop2+", "+destreg+"\n";
 			x86 += "je "+EQ+"\n";
 			x86 += "movl $0, "+destreg+"\n";
 			x86 += "jmp "+NEQ+"\n";
@@ -582,7 +592,7 @@ string genx86(vector<string> instr){
 		operand1 = instr[3];
 		operand2 = instr[4];
 
-		string destreg = getRegister(line_no,result);
+		string destreg = getRegister(line_no,result,operand1,operand2);
 		string NEQ = "NEQ"+intToString(line_no);
 		string NNEQ = "NNEQ"+intToString(line_no);
 		if(isInteger(operand1) && isInteger(operand2))
@@ -594,8 +604,8 @@ string genx86(vector<string> instr){
 		{
 			string lop1 = getLocation(operand1);
 			string lop2 = getLocation(operand2);
-			x86 += "movl "+lop2+", "+destreg+"\n";
-			x86 += "cmp "+lop1+", "+destreg+"\n";
+			x86 += "movl "+lop1+", "+destreg+"\n";
+			x86 += "cmpl "+lop2+", "+destreg+"\n";
 			x86 += "jne "+NEQ+"\n";
 			x86 += "movl $0, "+destreg+"\n";
 			x86 += "jmp "+NNEQ+"\n";
@@ -613,7 +623,7 @@ string genx86(vector<string> instr){
 		operand1 = instr[3];
 		operand2 = instr[4];
 
-		string destreg = getRegister(line_no,result);
+		string destreg = getRegister(line_no,result,operand1,operand2);
 		string LT = "LT"+intToString(line_no);
 		string NLT = "NLT"+intToString(line_no);
 		if(isInteger(operand1) && isInteger(operand2))
@@ -625,8 +635,8 @@ string genx86(vector<string> instr){
 		{
 			string lop1 = getLocation(operand1);
 			string lop2 = getLocation(operand2);
-			x86 += "movl "+lop2+", "+destreg+"\n";
-			x86 += "cmp "+lop1+", "+destreg+"\n";
+			x86 += "movl "+lop1+", "+destreg+"\n";
+			x86 += "cmpl "+lop2+", "+destreg+"\n";
 			x86 += "jl "+LT+"\n";
 			x86 += "movl $0, "+destreg+"\n";
 			x86 += "jmp "+NLT+"\n";
@@ -644,7 +654,7 @@ string genx86(vector<string> instr){
 		operand1 = instr[3];
 		operand2 = instr[4];
 
-		string destreg = getRegister(line_no,result);
+		string destreg = getRegister(line_no,result,operand1,operand2);
 		string GT = "GT"+intToString(line_no);
 		string NGT = "NGT"+intToString(line_no);
 		if(isInteger(operand1) && isInteger(operand2))
@@ -656,8 +666,8 @@ string genx86(vector<string> instr){
 		{
 			string lop1 = getLocation(operand1);
 			string lop2 = getLocation(operand2);
-			x86 += "movl "+lop2+", "+destreg+"\n";
-			x86 += "cmp "+lop1+", "+destreg+"\n";
+			x86 += "movl "+lop1+", "+destreg+"\n";
+			x86 += "cmpl "+lop2+", "+destreg+"\n";
 			x86 += "jg "+GT+"\n";
 			x86 += "movl $0, "+destreg+"\n";
 			x86 += "jmp "+NGT+"\n";
@@ -674,7 +684,7 @@ string genx86(vector<string> instr){
 		result = instr[2];
 		operand1 = instr[3];
 
-		string destreg = getRegister(line_no,result);
+		string destreg = getRegister(line_no,result,operand1);
 		string lop1 = getLocation(operand1);
 		x86 += "movl "+lop1+", "+destreg+"\n";
 	}
@@ -689,12 +699,12 @@ string genx86(vector<string> instr){
 		label = instr[5];
 		string lop1 = getLocation(operand1);
 		string lop2 = getLocation(operand2);
-		string destreg = getRegister(line_no,operand2);
-		if(lop2 == operand2 || lop2[0] == '$'){
-			x86 += "movl "+lop2+", "+destreg+"\n";
+		string destreg = getRegister(line_no,operand1);
+		if(lop1 == operand1 || lop1[0] == '$'){
+			x86 += "movl "+lop1+", "+destreg+"\n";
 		}
 		// Compare
-		x86 += "cmp "+lop1+", "+destreg+"\n";
+		x86 += "cmpl "+lop2+", "+destreg+"\n";
 		// Spilling the registers
 		for(auto reg : Registers){
 			if(getRegisterDescriptor(reg) != "NULL"){
@@ -706,21 +716,23 @@ string genx86(vector<string> instr){
 			}
 		}
 		label = "Node"+label;
-		switch(relop){
-			case "<=":
-				x86 += "jle "+label+"\n";break;
-			case ">=":
-				x86 += "jge "+label+"\n";break;
-			case "==":
-				x86 += "je "+label+"\n";break;
-			case "<":
-				x86 += "jl "+label+"\n";break;
-			case ">":
-				x86 += "jg "+label+"\n";break;
-			case "!=":
-				x86 += "jne "+label+"\n";break;
-			default :
-				cerr<<"Unrecognised RELOP"<<endl;
+		if (relop == "<="){
+			x86 += "jle "+label+"\n";
+		}
+		else if(relop == ">="){
+			x86 += "jge "+label+"\n";
+		}
+		else if(relop == "=="){
+			x86 += "je "+label+"\n";
+		}
+		else if(relop == "<"){
+			x86 += "jl "+label+"\n";
+		}
+		else if(relop == ">"){
+			x86 += "jg "+label+"\n";
+		}
+		else if(relop == "!="){
+			x86 += "jne "+label+"\n";
 		}
 	}
 	//////////
@@ -800,9 +812,9 @@ string genx86(vector<string> instr){
 		x86 += "movl $3, %eax\n";
 		x86 += "movl $0, %ebx\n";
 		x86 += "movl $" +var+", %ecx\n";
-		x86 +=  + "movl $1, %edx\n"
-		x86 +=  + "int $0x80\n"
-		x86 +=  + "subl $48, " + result + "\n"
+		x86 += "movl $1, %edx\n";
+		x86 += "int $0x80\n";
+		x86 += "subl $48, " + var+ "\n";
 	}
 	//////////
 	// exit
@@ -811,10 +823,28 @@ string genx86(vector<string> instr){
 		x86 += "call exit\n";
 	}
 	//////////
-	// exit
-	else if(op == "exit")
+	// return
+	else if(op == "return")
 	{
-		x86 += "call exit\n";
+		// 1, return , val
+		// Spilling the registers
+		for(auto reg : Registers){
+			if(getRegisterDescriptor(reg) != "NULL"){
+				// spill this register into memory before jumping
+				string var = getRegisterDescriptor(reg);
+				x86 += "movl "+reg+", "+var+"\n";
+				setRegisterDescriptor(reg, "NULL");
+				setAddressDescriptor(var, "mem");
+			}
+		}
+		string var = instr[2];
+		if(var != "NULL"){
+			string lop = getLocation(var);
+			x86 += "movl "+lop+", %eax\n";
+		}
+		x86 += "movl %ebp, %esp\n";
+		x86 += "popl %ebp\n";
+		x86 += "ret\n";
 	}
 	//////////
 	// print
@@ -825,12 +855,21 @@ string genx86(vector<string> instr){
 		string lop = getLocation(operand);
 		x86 += "pushl "+lop+"\n"+"pushl $fmt_str\n"+"call printf\n";
 	}
-
 	return x86;
 }
 
-int main(){
-	ifstream fin("test1");
+int main(int argc, char** argv){
+
+	char name[30];
+	strcpy(name,argv[1]);
+	string inputFile = "";
+	int len = strlen(name);
+	for(int i=0;i<len;i++)
+		inputFile+=name[i];
+	//cerr<<inputFile<<endl;
+	ifstream fin(inputFile.c_str());
+	//cerr<<"Done here"<<endl;
+
 	while(!fin.eof()){
 		string OneInstr;
 		getline(fin, OneInstr);
@@ -872,8 +911,11 @@ int main(){
 			leaders.pb(stringToInt(GoInstr));
 			if(NxtInstr<NumInstr)leaders.pb(NxtInstr);
 		}
-		if(instructions[i][1] == "label"){
+		if(instructions[i][1] == "function"){
 			leaders.pb(i);
+		}
+		if(instructions[i][1] == "call"){
+			if(i+1 < NumInstr)leaders.pb(i+1);
 		}
 	}
 	//cout<<"Leaders made"<<endl;
@@ -889,6 +931,19 @@ int main(){
 			}
 		}
 	}
+
+	//remove functions from the list of variables
+	
+	for(int i=0;i<NumInstr;i++)
+	{
+		if(instructions[i].size()>1)
+			if(instructions[i][1] == "function")
+			{
+				string funcname = instructions[i][2];
+				all_variables.erase(funcname);
+			}
+	}
+
 	//cout<<"All variables done"<<endl;
 
 	sort(leaders.begin(), leaders.end());
@@ -950,12 +1005,13 @@ int main(){
 				string a = InstrLine[2];
 				string b = InstrLine[3];
 				if(setfind(all_variables,a))
-					SymbolTable[a]=mp(instr, "Live"); //check
+					SymbolTable[a]=mp(INF, "Dead");
 				if(setfind(all_variables,b))
 					SymbolTable[b]=mp(instr, "Live");
 			}
 		}
 	}
+	//cerr<<"Made it till here"<<endl;
 	//cout<<"Made symboltable"<<endl;
 	AssemblyCode="";
 	DataSection=".section .data\n";
@@ -978,6 +1034,7 @@ int main(){
 		//cout<<nodes[nd].X<<" "<<nodes[nd].Y<<endl;
 		for(int instr=nodes[nd].X; instr<=nodes[nd].Y; instr++){
 			//cout<<"Instruction number "<<instr<<endl;
+			//cerr<<instr<<endl;
 			TextSection+=genx86(instructions[instr]);
 			// clean(instructions[instr])
 			// if variables dead after this change RegisterDescriptor
@@ -985,8 +1042,24 @@ int main(){
 		// Should we put data in all registers into memory after each basic block?
 		// Nope, this should be done before jumping, in ifgoto, goto, call
 		// We could also push the registers onto the stack and pop after the call returns
+		// Sometimes it is necessary
+		// Spilling the registers
+		for(auto reg : Registers){
+			if(getRegisterDescriptor(reg) != "NULL"){
+				// spill this register into memory before jumping
+				string var = getRegisterDescriptor(reg);
+				TextSection += "movl "+reg+", "+var+"\n";
+				setRegisterDescriptor(reg, "NULL");
+				setAddressDescriptor(var, "mem");
+			}
+		}
+
 	}
+	//cerr<<"Reached end"<<endl;
 	AssemblyCode+=DataSection+BssSection+TextSection;
-	cout<<AssemblyCode<<endl;
+	string outputFile = inputFile+".s";
+	ofstream fout(outputFile.c_str());
+	fout<<AssemblyCode<<endl;
+	fout.close();
 	return 0;
 }
