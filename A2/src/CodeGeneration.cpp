@@ -36,6 +36,7 @@ map<string, string> AddressDescriptor;
 
 string AssemblyCode,DataSection,BssSection,TextSection;
 string x86;
+vector<pair<string,string> > array_list;
 
 bool isInteger(string s);
 
@@ -61,6 +62,8 @@ string getRegister(int instr, string var, string operand1 = "$$", string operand
 	// if Y has no next use, then use the register of Y
 	for(auto reg : Registers){
 		if(getRegisterDescriptor(reg) == var){
+			if(var == operand1 || var == operand2)
+				continue;
 			return reg;
 		}
 		if(getRegisterDescriptor(reg) == "NULL"){
@@ -131,7 +134,6 @@ void init()
 	keywords.insert("<=");keywords.insert(">=");keywords.insert("==");
 	keywords.insert(">");keywords.insert("<");keywords.insert("!=");
 	keywords.insert("=");keywords.insert("function");keywords.insert("exit");
-
 	//arrays
 	keywords.insert("array");keywords.insert("member");keywords.insert("update");
 
@@ -715,6 +717,7 @@ string genx86(vector<string> instr){
 		x86 += "movl "+lop1+", "+destreg+"\n";
 		if(!isInteger(result))setAddressDescriptor(result, destreg);
 		if(!isInteger(result))setRegisterDescriptor(destreg, result);
+		//cerr<<getAddressDescriptor("a")<<" "<<getRegisterDescriptor("%eax")<<endl;
 	}
 	//////////
 	// ifgoto
@@ -839,18 +842,78 @@ string genx86(vector<string> instr){
 				setAddressDescriptor(var, "mem");
 			}
 		}
-		x86 += "movl $3, %eax\n";
-		x86 += "movl $0, %ebx\n";
-		x86 += "movl $" +var+", %ecx\n";
-		x86 += "movl $1, %edx\n";
-		x86 += "int $0x80\n";
-		x86 += "subl $48, " + var+ "\n";
+		x86 += "pushl "+var+"\n";
+		x86 += "pushl fmt_str_\n";
+		x86 += "call scanf\n";
 	}
 	//////////
 	// exit
 	else if(op == "exit")
 	{
 		x86 += "call exit\n";
+	}
+	//////////
+	// array Declaration
+	else if(op == "array")
+	{
+		string array_length = instr[2];
+		string array_name = instr[3];
+		array_list.pb(make_pair(array_name, array_length));
+	}
+	// Array Access
+	else if(op == "member")
+	{
+		// line, member, variable, array_name, offset
+		string variable, aName, offset;
+		variable = instr[2];
+		aName = instr[3];
+		offset = instr[4];
+		if(getRegisterDescriptor("%eax") != "NULL"){
+			string tp =getRegisterDescriptor("%eax");
+			x86 += "movl %eax, "+tp+"\n";
+			setRegisterDescriptor("%eax", "NULL");
+			setAddressDescriptor(tp, "mem");
+		}
+		if(getRegisterDescriptor("%ebx") != "NULL"){
+			string tp =getRegisterDescriptor("%ebx");
+			x86 += "movl %ebx, "+tp+"\n";
+			setRegisterDescriptor("%ebx", "NULL");
+			setAddressDescriptor(tp, "mem");
+		}
+		string lop = getLocation(offset);
+		x86 += "movl $"+aName+", %ebx\n";
+		x86 += "addl "+lop+", %ebx\n";
+		x86+= "movl (%ebx), %eax\n";
+		setRegisterDescriptor("%eax", variable);
+		setAddressDescriptor(variable, "%eax");
+	}
+	//////////
+	// Array Update
+	else if(op == "update")
+	{
+		// line, update, value, array_name, offset
+		string value, aName, offset;
+		value = instr[2];
+		aName = instr[3];
+		offset = instr[4];
+		if(getRegisterDescriptor("%eax") != "NULL"){
+			string tp =getRegisterDescriptor("%eax");
+			x86 += "movl %eax, "+tp+"\n";
+			setRegisterDescriptor("%eax", "NULL");
+			setAddressDescriptor(tp, "mem");
+		}
+		if(getRegisterDescriptor("%ebx") != "NULL"){
+			string tp =getRegisterDescriptor("%ebx");
+			x86 += "movl %ebx, "+tp+"\n";
+			setRegisterDescriptor("%ebx", "NULL");
+			setAddressDescriptor(tp, "mem");
+		}
+		string lop1 = getLocation(value);
+		string lop2 = getLocation(offset);
+		x86 += "movl "+lop1+", %eax\n";
+		x86 += "movl $"+aName+", %ebx\n";
+		x86+= "addl "+lop2+", %ebx\n";
+		x86 += "movl %eax, (%ebx)\n";
 	}
 	//////////
 	// return
@@ -966,12 +1029,21 @@ int main(int argc, char** argv){
 	
 	for(int i=0;i<NumInstr;i++)
 	{
-		if(instructions[i].size()>1)
+		if(instructions[i].size()>1){
 			if(instructions[i][1] == "function")
 			{
 				string funcname = instructions[i][2];
 				all_variables.erase(funcname);
 			}
+			if(instructions[i][1] == "array"){
+				string aName= instructions[i][2];
+				if(all_variables.find(aName)!=all_variables.end())
+				all_variables.erase(aName); //#arjun
+				aName= instructions[i][3];
+				if(all_variables.find(aName)!=all_variables.end())
+				all_variables.erase(aName); //#arjun
+			}
+		}
 	}
 
 	//cout<<"All variables done"<<endl;
@@ -1049,6 +1121,7 @@ int main(int argc, char** argv){
 		DataSection+=var+":\n.int 0\n";
 	}
 	DataSection+="fmt_str:\n.ascii \"%d\\n\\0\"\n";
+	DataSection+="fmt_str_:\n.ascii \"%d\"\n";
 	BssSection=".section .bss\n";
 	TextSection=".section .text\n.globl main\nmain:\n";
 	for(int nd=0; nd<NumNodes; nd++){
@@ -1083,7 +1156,15 @@ int main(int argc, char** argv){
 				setAddressDescriptor(var, "mem");
 			}
 		}
-
+	}
+	// Adding array declaration
+	for(auto ite : array_list){
+		DataSection += ite.X+":\n.int ";
+		int ilen=stringToInt(ite.Y);
+		for(int i=0;i<ilen-1;i++){
+			DataSection += "0, ";
+		}
+		DataSection += "0\n";
 	}
 	//cerr<<"Reached end"<<endl;
 	AssemblyCode+=DataSection+BssSection+TextSection;
