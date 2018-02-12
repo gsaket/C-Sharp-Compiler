@@ -56,10 +56,7 @@ string getAddressDescriptor(string var){
 	return AddressDescriptor[var];
 }
 
-// Lecture slide 29: Case 4? when is memory location returned?
 string getRegister(int instr, string var, string operand1 = "$$", string operand2 = "$$"){
-	// Also, in X = Y op Z
-	// if Y has no next use, then use the register of Y
 	for(auto reg : Registers){
 		if(getRegisterDescriptor(reg) == var){
 			if(var == operand1 || var == operand2)
@@ -204,12 +201,10 @@ string genx86(vector<string> instr){
 		result = instr[2];
 		operand1 = instr[3];
 		operand2 = instr[4];
-		//Finding the destination register
 		/////////////
 		//Addition
 		if(op == "+")
 		{
-			//cout<<"in plus"<<endl;
 			string destreg = getRegister(line_no,result,operand1,operand2);
 			if(isInteger(operand1) && isInteger(operand2))
 			{
@@ -486,7 +481,6 @@ string genx86(vector<string> instr){
 	// NOT
 	else if(op=="~")
 	{
-		//cerr<<"In tilde"<<endl;
 		string result, operand1, operand2;
 		result = instr[2];
 		operand1 = instr[3];
@@ -717,7 +711,6 @@ string genx86(vector<string> instr){
 		x86 += "movl "+lop1+", "+destreg+"\n";
 		if(!isInteger(result))setAddressDescriptor(result, destreg);
 		if(!isInteger(result))setRegisterDescriptor(destreg, result);
-		//cerr<<getAddressDescriptor("a")<<" "<<getRegisterDescriptor("%eax")<<endl;
 	}
 	//////////
 	// ifgoto
@@ -842,8 +835,8 @@ string genx86(vector<string> instr){
 				setAddressDescriptor(var, "mem");
 			}
 		}
-		x86 += "pushl "+var+"\n";
-		x86 += "pushl fmt_str_\n";
+		x86 += "pushl $"+var+"\n";
+		x86 += "pushl $fmt_str_\n";
 		x86 += "call scanf\n";
 	}
 	//////////
@@ -853,7 +846,7 @@ string genx86(vector<string> instr){
 		x86 += "call exit\n";
 	}
 	//////////
-	// array Declaration
+	// array declaration
 	else if(op == "array")
 	{
 		string array_length = instr[2];
@@ -959,9 +952,7 @@ int main(int argc, char** argv){
 	int len = strlen(name);
 	for(int i=0;i<len;i++)
 		inputFile+=name[i];
-	//cerr<<inputFile<<endl;
 	ifstream fin(inputFile.c_str());
-	//cerr<<"Done here"<<endl;
 
 	while(!fin.eof()){
 		string OneInstr;
@@ -973,22 +964,14 @@ int main(int argc, char** argv){
 
 	//initialize keywords and operations
 	init();
-	//cout<<"Init done"<<endl;
+
 	int NumInstr=(int)(instructions.size());
 
-	/*
-	 *for(int i=0;i<NumInstr;i++){
-	 *    for(int j=0;j<instructions[i].size();j++){
-	 *        cout<<instructions[i][j]<<" -- ";
-	 *    }
-	 *    cout<<endl;
-	 *}
-	 */
 
 	leaders.pb(0);
-	//cout<<"Number of Instructions are: "<<NumInstr<<endl;
-	for(int i=0; i<NumInstr; i++){ //check
-		//cout<<i<<" ****"<<endl;
+
+	for(int i=0; i<NumInstr; i++){ 
+
 		if(instructions[i][1] == "ifgoto"){
 			int si=(int)(instructions[i].size());
 			string GoInstr=instructions[i][si-1];
@@ -1011,7 +994,6 @@ int main(int argc, char** argv){
 			if(i+1 < NumInstr)leaders.pb(i+1);
 		}
 	}
-	//cout<<"Leaders made"<<endl;
 	//make the set of all variables
 	for(int i=0;i<NumInstr;i++)
 	{
@@ -1026,7 +1008,6 @@ int main(int argc, char** argv){
 	}
 
 	//remove functions from the list of variables
-	
 	for(int i=0;i<NumInstr;i++)
 	{
 		if(instructions[i].size()>1){
@@ -1046,7 +1027,6 @@ int main(int argc, char** argv){
 		}
 	}
 
-	//cout<<"All variables done"<<endl;
 
 	sort(leaders.begin(), leaders.end());
 	leaders.erase(unique(leaders.begin(), leaders.end()), leaders.end());
@@ -1057,11 +1037,7 @@ int main(int argc, char** argv){
 	nodes.pb(mp(leaders[NumLeaders-1], NumInstr-1));
 	int NumNodes = (int)(nodes.size());
 
-	//cout<<nodes[0].X<<" "<<nodes[0].Y<<"****"<<endl;
-
 	NextUse.resize(NumInstr);
-
-	//cout<<"Number of nodes is "<<NumNodes<<endl;
 
 	for(int nd=0; nd<NumNodes; nd++){
 		for(auto idx : all_variables)
@@ -1070,7 +1046,7 @@ int main(int argc, char** argv){
 			vector<string> InstrLine = instructions[instr];
 			string Operator = InstrLine[1];
 			for(auto var : all_variables){
-				NextUse[instr][var] = SymbolTable[var].X; //shouldnt it only be the vars involved in the instruction ?
+				NextUse[instr][var] = SymbolTable[var].X;
 			}
 			if(ops_mth.find(Operator) != ops_mth.end())
 			{
@@ -1113,8 +1089,6 @@ int main(int argc, char** argv){
 			}
 		}
 	}
-	//cerr<<"Made it till here"<<endl;
-	//cout<<"Made symboltable"<<endl;
 	AssemblyCode="";
 	DataSection=".section .data\n";
 	for(auto var : all_variables){
@@ -1134,19 +1108,9 @@ int main(int argc, char** argv){
 		//nodes[nd].X to nodes[nd].Y 0-indexed instruction numbers
 		TextSection+="Node"+intToString(nodes[nd].X)+":\n";
 
-		//cout<<nodes[nd].X<<" "<<nodes[nd].Y<<endl;
 		for(int instr=nodes[nd].X; instr<=nodes[nd].Y; instr++){
-			//cout<<"Instruction number "<<instr<<endl;
-			//cerr<<instr<<endl;
 			TextSection+=genx86(instructions[instr]);
-			// clean(instructions[instr])
-			// if variables dead after this change RegisterDescriptor
 		}
-		// Should we put data in all registers into memory after each basic block?
-		// Nope, this should be done before jumping, in ifgoto, goto, call
-		// We could also push the registers onto the stack and pop after the call returns
-		// Sometimes it is necessary
-		// Spilling the registers
 		for(auto reg : Registers){
 			if(getRegisterDescriptor(reg) != "NULL"){
 				// spill this register into memory before jumping
@@ -1166,11 +1130,10 @@ int main(int argc, char** argv){
 		}
 		DataSection += "0\n";
 	}
-	//cerr<<"Reached end"<<endl;
 	AssemblyCode+=DataSection+BssSection+TextSection;
-	string outputFile = inputFile+".s";
-	ofstream fout(outputFile.c_str());
-	fout<<AssemblyCode<<endl;
-	fout.close();
+	//string outputFile = inputFile+".s";
+	//ofstream fout(outputFile.c_str());
+	cout<<AssemblyCode<<endl;
+	//fout.close();
 	return 0;
 }
