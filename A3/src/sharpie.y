@@ -106,891 +106,716 @@ vector<string> T;
 %token <sval> BLOCK_END   371
 %token <sval> STRING_LITERAL 372
 %token <sval> COLCOL    373
-
+%start compilation_unit
 %%
 
-/*(* grammar csharp4 *)*/
-start :
-      compilation_unit;
-/*(*B.1.4 Tokens*) */
-/*
- *token :
- *         IDENTIFIER
- *         | keyword
- *         | INTEGER_LITERAL
- *         | CHARACTER_LITERAL
- *         | STRING_LITERAL
- *         | operator_or_punctuator;
- */
-/*(*B.1.7 Keywords*) */
-/*
- *keyword :
- *        ABSTRACT
- *        | BASE
- *        | BOOL_TYPE
- *        | BREAK
- *        | CASE
- *        | CHAR_TYPE
- *        | CLASS
- *        | CONTINUE
- *        | DEFAULT
- *        | DO
- *        | ELSE
- *        | FALSE
- *        | FOR
- *        | FOREACH
- *        | GOTO
- *        | IF
- *        | IN
- *        | INT_TYPE
- *        | INTERFACE
- *        |NAMESPACE
- *        | NEW
- *        | NULL_TYPE
- *        | OBJECT
- *        | OPERATOR
- *        | OUT
- *        | OVERRIDE
- *        | PRIVATE
- *        | PROTECTED
- *        | PUBLIC
- *        | RETURN
- *        | SIZEOF
- *        | STRING_TYPE
- *        | STRUCT
- *        | SWITCH
- *        | THIS
- *        | TRUE
- *        | TYPEOF
- *        | USING
- *        | VIRTUAL
- *        | VOID
- *        | WHILE
- *        ;
- *
- */
-/*(*B.1.8 Literals*)*/
-literal :
-	boolean_literal
-	 | INTEGER_LITERAL
-	 | CHARACTER_LITERAL
-	 | STRING_LITERAL
-	 | NULL_TYPE
-	 ;
-boolean_literal :
-	TRUE
-	 | FALSE
-	 ;
+/***** C.1.8 Literals *****/
+literal
+  : boolean_literal
+  | INTEGER_LITERAL
+  | CHARACTER_LITERAL
+  | STRING_LITERAL
+  | NULL_TYPE
+  ;
+boolean_literal
+  : TRUE
+  | FALSE
+  ;
+/********** C.2 Syntactic grammar **********/
 
-/*(*B.1.9 Operators and punctuators*) */
-/*
- *operator_or_punctuator :
- *        BLOCK_BEGIN
- *        | BLOCK_END
- *        | LEFT_BRACKET
- *        | RIGHT_BRACKET
- *        | '('
- *        | ')'
- *        | '.'
- *        | COMMA
- *        | ':'
- *        | ';'
- *        | '+'
- *        | '-'
- *        | '*'
- *        | '/'
- *        | '%'
- *        | '&'
- *        | '|'
- *        | '^'
- *        | '!'
- *        | '~'
- *        | '='
- *        | '<'
- *        | '>'
- *        | '?'
- *        | COLCOL
- *        | PLUSPLUS
- *        | MINUSMINUS
- *        | ANDAND
- *        | OROR
- *        | EQEQ
- *        | NOTEQ
- *        | LEQ
- *        | GEQ
- *        | PLUSEQ
- *        | MINUSEQ
- *        | STAREQ
- *        | DIVEQ
- *        | MODEQ
- *        | ANDEQ
- *        | OREQ
- *        | XOREQ
- *        | LTLT
- *        | LTLTEQ
- *        ;
- */
-right_shift :
-	GTGT
-	;
-right_shift_assignment :
-			 GTGTEQ
-			 ;
+/***** C.2.1 Basic concepts *****/
+namespace_name
+  : qualified_identifier
+  ;
+type_name
+  : qualified_identifier
+  ;
+/***** C.2.2 Types *****/
+type
+  : non_array_type
+  | array_type
+  ;
+non_array_type
+  : simple_type
+  | type_name
+  ;
+simple_type
+  : primitive_type
+  | class_type
+  ;
+primitive_type
+  : numeric_type
+  | BOOL_TYPE
+  ;
+numeric_type
+  : integral_type
+  ;
+integral_type
+  :  INT_TYPE
+  | CHAR_TYPE
+  ;
+class_type
+  : OBJECT 
+  | STRING_TYPE
+  ;
+array_type
+  : array_type rank_specifier
+  | simple_type rank_specifier
+  | qualified_identifier rank_specifier
+  ;
+rank_specifier
+  : RANK_SPECIFIER
+  ;
+rank_specifiers_opt
+  : 
+  | rank_specifier
+  ;
+/***** C.2.3 Variables *****/
+variable_reference
+  : expression
+  ;
+/***** C.2.4 Expressions *****/
+argument_list
+  : argument
+  | argument_list COMMA argument
+  ;
+argument
+  : expression
+  | OUT variable_reference
+  ;
+primary_expression
+  : parenthesized_expression
+  | primary_expression_no_parenthesis
+  ;
+primary_expression_no_parenthesis
+  : literal
+  | array_creation_expression
+  | member_access
+  | invocation_expression
+  | element_access
+  | this_access
+  | base_access
+  | new_expression
+  | typeof_expression
+  ;
+parenthesized_expression
+  : '(' expression ')'
+  ;
+member_access
+  : primary_expression '.' IDENTIFIER
+  | primitive_type '.' IDENTIFIER
+  | class_type '.' IDENTIFIER
+  ;
+invocation_expression
+  : primary_expression_no_parenthesis '(' argument_list_opt ')'
+  | qualified_identifier '(' argument_list_opt ')'
+  ;
+argument_list_opt
+  : /* Nothing */
+  | argument_list
+  ;
+element_access
+  : primary_expression LEFT_BRACKET expression_list RIGHT_BRACKET
+  | qualified_identifier LEFT_BRACKET expression_list RIGHT_BRACKET
+  ;
+expression_list
+  : expression
+  | expression_list COMMA expression
+  ;
+this_access
+  : THIS
+  ;
+base_access
+  : BASE '.' IDENTIFIER
+  | BASE LEFT_BRACKET expression_list RIGHT_BRACKET
+  ;
+new_expression
+  : object_creation_expression
+  ;
+object_creation_expression
+  : NEW type '(' argument_list_opt ')'
+  ;
+array_creation_expression
+  : NEW non_array_type LEFT_BRACKET expression_list RIGHT_BRACKET rank_specifiers_opt array_initializer_opt
+  | NEW array_type array_initializer
+  ;
+array_initializer_opt
+  : /* Nothing */
+  | array_initializer
+  ;
+typeof_expression
+  : TYPEOF '(' type ')'
+  | TYPEOF '(' VOID ')'
+  ;
+addressof_expression
+  : '&' unary_expression
+  ;
+postfix_expression
+  : primary_expression
+  | qualified_identifier
+  ;
+unary_expression_not_plusminus
+  : postfix_expression
+  | '!' unary_expression
+  | '~' unary_expression
+  | cast_expression
+  ;
+pre_increment_expression
+  : PLUSPLUS unary_expression
+  ;
+pre_decrement_expression
+  : MINUSMINUS unary_expression
+  ;
+unary_expression
+  : unary_expression_not_plusminus
+  | '+' unary_expression
+  | '-' unary_expression
+  | '*' unary_expression
+  | pre_increment_expression
+  | pre_decrement_expression
+  | addressof_expression
+  ;
+cast_expression
+  : '(' expression ')' unary_expression_not_plusminus
+  | '(' multiplicative_expression '*' ')' unary_expression 
+  | '(' qualified_identifier rank_specifier type_quals_opt ')' unary_expression  
+  | '(' primitive_type type_quals_opt ')' unary_expression
+  | '(' class_type type_quals_opt ')' unary_expression
+  | '(' VOID type_quals_opt ')' unary_expression
+  ;
+type_quals_opt
+  : /* Nothing */
+  | type_quals
+  ;
+type_quals
+  : type_qual
+  | type_quals type_qual
+  ;
+type_qual 
+  : rank_specifier 
+  | '*'
+  ;
+multiplicative_expression
+  : unary_expression
+  | multiplicative_expression '*' unary_expression  
+  | multiplicative_expression '/' unary_expression
+  | multiplicative_expression '%' unary_expression
+  ;
+additive_expression
+  : multiplicative_expression
+  | additive_expression '+' multiplicative_expression
+  | additive_expression '-' multiplicative_expression
+  ;
+shift_expression
+  : additive_expression 
+  | shift_expression LTLT additive_expression
+  | shift_expression GTGT additive_expression
+  ;
+relational_expression
+  : shift_expression
+  | relational_expression '<' shift_expression
+  | relational_expression '>' shift_expression
+  | relational_expression LEQ shift_expression
+  | relational_expression GEQ shift_expression
+  ;
+equality_expression
+  : relational_expression
+  | equality_expression EQEQ relational_expression
+  | equality_expression NOTEQ relational_expression
+  ;
+and_expression
+  : equality_expression
+  | and_expression '&' equality_expression
+  ;
+exclusive_or_expression
+  : and_expression
+  | exclusive_or_expression '^' and_expression
+  ;
+inclusive_or_expression
+  : exclusive_or_expression
+  | inclusive_or_expression '|' exclusive_or_expression
+  ;
+conditional_and_expression
+  : inclusive_or_expression
+  | conditional_and_expression ANDAND inclusive_or_expression
+  ;
+conditional_or_expression
+  : conditional_and_expression
+  | conditional_or_expression OROR conditional_and_expression
+  ;
+conditional_expression
+  : conditional_or_expression
+  | conditional_or_expression '?' expression ':' expression
+  ;
+assignment
+: unary_expression assignment_operator expression
+  ;
+assignment_operator
+  : '=' 
+  | PLUSEQ 
+  | MINUSEQ 
+  | STAREQ 
+  | DIVEQ 
+  | MODEQ 
+  | XOREQ 
+  | ANDEQ 
+  | OREQ 
+  | GTGTEQ 
+  | LTLTEQ 
+  ;
+expression
+  : conditional_expression
+  | assignment
+  ;
+constant_expression
+  : expression
+  ;
+boolean_expression
+  : expression
+  ;
+/***** C.2.5 Statements *****/
+statement
+  : declaration_statement
+  | embedded_statement
+  ;
+embedded_statement
+  : block
+  | empty_statement
+  | expression_statement
+  | selection_statement
+  | iteration_statement
+  | jump_statement
+  ;
+block
+  : '{' statement_list_opt '}'
+  ;
+statement_list_opt
+  : /* Nothing */
+  | statement_list
+  ;
 
-/*(*B.2 Syntactic grammar*) */
-
-/*(*B.2.1 Basic concepts*) */
-namespace_name :
-	namespace_or_type_name;
-type_name :
-	namespace_or_type_name;
-namespace_or_type_name :
-	IDENTIFIER
-	 | namespace_or_type_name '.' IDENTIFIER
-	 | qualified_alias_member;
-
-/*(*B.2.2 Types*) */
-type :
-	 value_type
-	 | reference_type
-value_type :
-	struct_type;
-struct_type :
-	type_name
-	 | simple_type;
-simple_type :
-	numeric_type
-	 | BOOL_TYPE
-	 ;
-numeric_type :
-	integral_type;
-integral_type :
-	 INT_TYPE
-	| CHAR_TYPE
-	;
-reference_type :
-	class_type
-	 | interface_type
-	 | array_type
-	 ;
-class_type :
-	type_name
-	 | OBJECT
-	 | STRING_TYPE
-	 ;
-interface_type :
-	type_name;
-
-/*(*B.2.3 Variables*) */
-variable_reference :
-	expression
-	;
-
-/*(*B.2.4 Expressions*) */
-argument_list :
-	 argument
-	 | argument_list COMMA argument
-	 ;
-argument :
-	argument_name argument_value
-	| argument_value
-	;
-argument_name :
-	IDENTIFIER ':';
-argument_value :
-	expression
-	 | OUT variable_reference
-	 ;
-primary_expression :
-	primary_no_array_creation_expression
-	 | array_creation_expression
-	 ;
-primary_no_array_creation_expression :
-	literal
-	 | simple_name
-	 | parenthesized_expression
-	 | member_access
-	 | invocation_expression
-	 | element_access
-	 | this_access
-	 | base_access
-	 | object_creation_expression
-	 | typeof_expression
-	 | default_value_expression
-	 ;
-simple_name :
-	IDENTIFIER
-	;
-parenthesized_expression :
-	'(' expression ')'
-	;
-member_access :
-	primary_expression '.' IDENTIFIER
-	 | predefined_type '.' IDENTIFIER
-	 | qualified_alias_member '.' IDENTIFIER
-	 ;
-predefined_type :
-	BOOL_TYPE
-	| CHAR_TYPE
-	| INT_TYPE
-	| OBJECT
-	| STRING_TYPE
-	;
-invocation_expression :
-	primary_expression '(' argument_list ')'
-	| primary_expression '(' ')';
-element_access :
-	primary_no_array_creation_expression LEFT_BRACKET expression_list RIGHT_BRACKET
-	;
-expression_list :
-	expression
-	 | expression_list COMMA expression
-	 ;
-this_access :
-	THIS
-	;
-base_access :
-	BASE '.' IDENTIFIER
-	| BASE LEFT_BRACKET expression_list RIGHT_BRACKET
-	;
-object_creation_expression :
-	NEW type '(' argument_list ')' object_or_collection_initializer
-	| NEW type '(' argument_list ')'
-	| NEW type '(' ')' object_or_collection_initializer
-	| NEW type '(' ')'
-	| NEW type object_or_collection_initializer
-	;
-object_or_collection_initializer :
-	object_initializer
-	| collection_initializer
-	;
-object_initializer :
-	BLOCK_BEGIN member_initializer_list BLOCK_END
-	| BLOCK_BEGIN BLOCK_END
-	| BLOCK_BEGIN member_initializer_list COMMA BLOCK_END
-	;
-member_initializer_list :
-	member_initializer
-	| member_initializer_list COMMA member_initializer
-	;
-member_initializer :
-	IDENTIFIER '=' initializer_value
-	;
-initializer_value :
-	expression
-	 | object_or_collection_initializer
-	 ;
-collection_initializer :
-	BLOCK_BEGIN element_initializer_list BLOCK_END
-	 | BLOCK_BEGIN element_initializer_list COMMA BLOCK_END
-	 ;
-element_initializer_list :
-	element_initializer
-	 | element_initializer_list COMMA element_initializer
-	 ;
-element_initializer :
-	non_assignment_expression
-	 | BLOCK_BEGIN expression_list BLOCK_END
-	 ;
-array_creation_expression :
-	NEW non_array_type LEFT_BRACKET expression_list RIGHT_BRACKET RANK_SPECIFIER array_initializer
-	| NEW non_array_type LEFT_BRACKET expression_list RIGHT_BRACKET array_initializer
-	| NEW non_array_type LEFT_BRACKET expression_list RIGHT_BRACKET RANK_SPECIFIER
-	| NEW non_array_type LEFT_BRACKET expression_list RIGHT_BRACKET
-	 | NEW array_type array_initializer
-	 | NEW RANK_SPECIFIER array_initializer
-	 ;
-typeof_expression :
-	TYPEOF '(' type ')'
-	 | TYPEOF '(' VOID ')'
-	 ;
-default_value_expression :
-	DEFAULT '(' type ')'
-	;
-unary_expression :
-	primary_expression
-	 | '+' unary_expression
-	 | '-' unary_expression
-	 | '!' unary_expression
-	 | '~' unary_expression
-	 | pre_increment_expression
-	 | pre_decrement_expression
-	 | cast_expression
-	 ;
-pre_increment_expression :
-	PLUSPLUS unary_expression
-	;
-pre_decrement_expression :
-	MINUSMINUS unary_expression
-	;
-cast_expression :
-	'(' type ')' unary_expression
-	;
-multiplicative_expression :
-	unary_expression
-	 | multiplicative_expression '*' unary_expression
-	 | multiplicative_expression '/' unary_expression
-	 | multiplicative_expression '%' unary_expression
-	 ;
-additive_expression :
-	multiplicative_expression
-	 | additive_expression '+' multiplicative_expression
-	 | additive_expression '-' multiplicative_expression
-	 ;
-shift_expression :
-	additive_expression
-	 | shift_expression LTLT additive_expression
-	 | shift_expression right_shift additive_expression
-	 ;
-relational_expression :
-	shift_expression
-	 | relational_expression '<' shift_expression
-	 | relational_expression '>' shift_expression
-	 | relational_expression LEQ shift_expression
-	 | relational_expression GEQ shift_expression
-	 ;
-equality_expression :
-	relational_expression
-	 | equality_expression EQEQ relational_expression
-	 | equality_expression NOTEQ relational_expression
-	 ;
-and_expression :
-	equality_expression
-	 | and_expression '&' equality_expression
-	 ;
-exclusive_or_expression :
-	and_expression
-	 | exclusive_or_expression '^' and_expression
-	 ;
-inclusive_or_expression :
-	exclusive_or_expression
-	 | inclusive_or_expression '|' exclusive_or_expression
-	 ;
-conditional_and_expression :
-	inclusive_or_expression
-	 | conditional_and_expression ANDAND inclusive_or_expression
-	 ;
-conditional_or_expression :
-	conditional_and_expression
-	 | conditional_or_expression OROR conditional_and_expression
-	 ;
-conditional_expression :
-	conditional_or_expression
-	 | conditional_or_expression '?' expression ':' expression
-	 ;
-assignment :
-	unary_expression assignment_operator expression
-	;
-assignment_operator :
-	'='
-	 | PLUSEQ
-	 | MINUSEQ
-	 | STAREQ
-	 | DIVEQ
-	 | MODEQ
-	 | ANDEQ
-	 | OREQ
-	 | XOREQ
-	 | LTLTEQ
-	 | right_shift_assignment
-	 ;
-expression :
-	non_assignment_expression
-	 | assignment
-	 ;
-non_assignment_expression :
-	conditional_expression
-	;
-constant_expression :
-	expression
-	;
-boolean_expression :
-	expression
-	;
-
-
-/*(*B.2.5 Statements*) */
-statement :
-	 declaration_statement
-	 | embedded_statement
-	 ;
-embedded_statement :
-	block
-	 | empty_statement
-	 | expression_statement
-	 | selection_statement
-	 | iteration_statement
-	 | jump_statement
-	 ;
-block :
-	BLOCK_BEGIN statement_list BLOCK_END
-	| BLOCK_BEGIN BLOCK_END
-	;
-statement_list :
-	statement
-	 | statement_list statement
-	 ;
-empty_statement :
-	';'
-	;
-declaration_statement :
-	local_variable_declaration ';'
-local_variable_declaration :
-	local_variable_type local_variable_declarators
-	;
-local_variable_type :
-	type
-	;
-local_variable_declarators :
-	local_variable_declarator
-	| local_variable_declarators COMMA local_variable_declarator
-	;
-local_variable_declarator :
-	IDENTIFIER
-	 | IDENTIFIER '=' local_variable_initializer
-	 ;
-local_variable_initializer :
-	expression
-	| array_initializer;
-expression_statement :
-	statement_expression ';'
-	;
-statement_expression :
-	invocation_expression
-	 | object_creation_expression
-	 | assignment
-	 | pre_increment_expression
-	 | pre_decrement_expression
-	 ;
-selection_statement :
-	if_statement
-	 | switch_statement
-	 ;
-if_statement :
-	IF '(' boolean_expression ')' embedded_statement
-	 | IF '(' boolean_expression ')' embedded_statement ELSE embedded_statement
-	 ;
-switch_statement :
-	SWITCH '(' expression ')' switch_block
-	;
-switch_block :
-	BLOCK_BEGIN switch_sections BLOCK_END
-	|BLOCK_BEGIN BLOCK_END
-	;
-switch_sections :
-	switch_section
-	 | switch_sections switch_section
-	 ;
-switch_section :
-	switch_labels statement_list;
-switch_labels :
-	switch_label
-	 | switch_labels switch_label;
-switch_label :
-	CASE constant_expression ':'
-	 | DEFAULT ':'
-	 ;
-
-iteration_statement :
-	while_statement
-	 | do_statement
-	 | for_statement
-	 | foreach_statement
-	 ;
-while_statement :
-	WHILE '(' boolean_expression ')' embedded_statement
-	;
-do_statement :
-	DO embedded_statement WHILE '(' boolean_expression ')' ';'
-	;
-for_statement :
-	FOR '(' for_initializer ';' for_condition ';' for_iterator ')' embedded_statement
-	;
-for_initializer :
-	local_variable_declaration
-	 | statement_expression_list
-	 ;
-for_condition :
-	boolean_expression
-	;
-for_iterator :
-	statement_expression_list
-	;
-statement_expression_list :
-	statement_expression
-	 | statement_expression_list COMMA statement_expression
-	 ;
-foreach_statement :
-	FOREACH '(' local_variable_type IDENTIFIER IN expression ')' embedded_statement
-	;
-jump_statement :
-	break_statement
-	 | continue_statement
-	 | goto_statement
-	 | return_statement
-	 ;
-break_statement :
-	BREAK ';'
-	;
-continue_statement :
-	CONTINUE ';'
-	;
-goto_statement :
-	GOTO IDENTIFIER ';'
-	;
-return_statement :
-	RETURN expression ';'
-	|RETURN ';'
-	;
+statement_list
+  : statement
+  | statement_list statement
+  ;
+empty_statement
+  : ';'
+  ;
+declaration_statement
+  : local_variable_declaration ';'
+  ;
+local_variable_declaration
+  : type variable_declarators
+  ;
+variable_declarators
+  : variable_declarator
+  | variable_declarators COMMA variable_declarator
+  ;
+variable_declarator
+  : IDENTIFIER
+  | IDENTIFIER '=' variable_initializer
+  ;
+variable_initializer
+  : expression
+  | array_initializer
+  ;
+expression_statement
+  : statement_expression ';'
+  ;
+statement_expression
+  : invocation_expression
+  | object_creation_expression
+  | assignment
+  | pre_increment_expression
+  | pre_decrement_expression
+  ;
+selection_statement
+  : if_statement
+  | switch_statement
+  ;
+if_statement
+  : IF '(' boolean_expression ')' embedded_statement
+  | IF '(' boolean_expression ')' embedded_statement ELSE embedded_statement
+  ;
+switch_statement
+  : SWITCH '(' expression ')' switch_block
+  ;
+switch_block
+  : '{' switch_sections_opt '}'
+  ;
+switch_sections_opt
+  : /* Nothing */
+  | switch_sections
+  ;
+switch_sections
+  : switch_section
+  | switch_sections switch_section
+  ;
+switch_section
+  : switch_labels statement_list
+  ;
+switch_labels
+  : switch_label
+  | switch_labels switch_label
+  ;
+switch_label
+  : CASE constant_expression ':'
+  | DEFAULT ':'
+  ;
+iteration_statement
+  : while_statement
+  | do_statement
+  | for_statement
+  | foreach_statement
+  ;
+while_statement
+  : WHILE '(' boolean_expression ')' embedded_statement
+  ;
+do_statement
+  : DO embedded_statement WHILE '(' boolean_expression ')' ';'
+  ;
+for_statement
+  : FOR '(' for_initializer_opt ';' for_condition_opt ';' for_iterator_opt ')' embedded_statement
+  ;
+for_initializer_opt
+  : /* Nothing */
+  | for_initializer
+  ;
+for_condition_opt
+  : /* Nothing */
+  | for_condition
+  ;
+for_iterator_opt
+  : /* Nothing */
+  | for_iterator
+  ;
+for_initializer
+  : local_variable_declaration
+  | statement_expression_list
+  ;
+for_condition
+  : boolean_expression
+  ;
+for_iterator
+  : statement_expression_list
+  ;
+statement_expression_list
+  : statement_expression
+  | statement_expression_list COMMA statement_expression
+  ;
+foreach_statement
+  : FOREACH '(' type IDENTIFIER IN expression ')' embedded_statement
+  ;
+jump_statement
+  : break_statement
+  | continue_statement
+  | goto_statement
+  | return_statement
+  ;
+break_statement
+  : BREAK ';'
+  ;
+continue_statement
+  : CONTINUE ';'
+  ;
+goto_statement
+  : GOTO IDENTIFIER ';'
+  ;
+return_statement
+  : RETURN expression_opt ';'
+  ;
+expression_opt
+  : /* Nothing */
+  | expression
+  ;
 
 /*(*B.2.6 Namespaces;*) */
-compilation_unit :
-	 using_directives namespace_member_declarations
-	 | namespace_member_declarations
-	 | using_directive
-	 ;
-namespace_declaration :
-	NAMESPACE qualified_identifier namespace_body ';'
-	| NAMESPACE qualified_identifier namespace_body
-	;
-qualified_identifier :
-	IDENTIFIER
-	 | qualified_identifier '.' IDENTIFIER
-	 ;
-namespace_body :
-	using_directives namespace_member_declarations
-	| using_directives
-	| namespace_member_declarations
-	| using_directives namespace_body
-	| namespace_member_declarations namespace_body
-	;
-using_directives :
-	using_directive
-	 | using_directives using_directive
-	 ;
-using_directive :
-	using_alias_directive
-	 | using_namespace_directive
-	 ;
-using_alias_directive :
-	USING IDENTIFIER '=' namespace_or_type_name ';'
-	;
-using_namespace_directive :
-	USING namespace_name ';'
-	;
-namespace_member_declarations :
-	namespace_member_declaration
-	 | namespace_member_declarations namespace_member_declaration
-	 ;
-namespace_member_declaration :
-	namespace_declaration
-	 | type_declaration
-	 ;
-type_declaration :
-	class_declaration
-	 | struct_declaration
-	 | interface_declaration
-	 ;
-qualified_alias_member :
-	IDENTIFIER COLCOL IDENTIFIER
-	;
+compilation_unit
+  : using_directives_opt 
+  | using_directives_opt namespace_member_declarations
+  ;
+using_directives_opt
+  : /* Nothing */
+  | using_directives
+  ;
+namespace_member_declarations_opt
+  : /* Nothing */
+  | namespace_member_declarations
+  ;
+namespace_declaration
+  : NAMESPACE qualified_identifier namespace_body comma_opt
+  ;
+comma_opt
+  : /* Nothing */
+  | ';'
+  ;
+qualified_identifier
+  : IDENTIFIER
+  | qualifier IDENTIFIER
+  ;
+qualifier
+  : IDENTIFIER '.' 
+  | qualifier IDENTIFIER '.' 
+  ;
+namespace_body
+  : '{' using_directives_opt namespace_member_declarations_opt '}'
+  ;
+using_directives
+  : using_directive
+  | using_directives using_directive
+  ;
+using_directive
+  : using_alias_directive
+  | using_namespace_directive
+  ;
+using_alias_directive
+  : USING IDENTIFIER '=' qualified_identifier ';'
+  ;
+using_namespace_directive
+  : USING namespace_name ';'
+  ;
+namespace_member_declarations
+  : namespace_member_declaration
+  | namespace_member_declarations namespace_member_declaration
+  ;
+namespace_member_declaration
+  : namespace_declaration
+  | type_declaration
+  ;
+type_declaration
+  : class_declaration
+  | struct_declaration
+  | interface_declaration
+  ;
 
-/*(*B.2.7 Classes;*) */
-class_declaration :
-	 class_modifiers CLASS IDENTIFIER class_base class_body ';'
-	 |class_modifiers CLASS IDENTIFIER class_body ';'
-	 ;
-class_modifiers :
-	class_modifier
-	 | class_modifiers class_modifier;
-class_modifier :
-	NEW
-	 | PUBLIC
-	 | PROTECTED
-	 | PRIVATE
-	 | ABSTRACT
-	 ;
-class_base :
-	':' class_type
-	 | ':' interface_type_list
-	 | ':' class_type COMMA interface_type_list
-	 ;
-interface_type_list :
-	interface_type
-	 | interface_type_list COMMA interface_type
-	 ;
-class_body :
-	BLOCK_BEGIN class_member_declarations BLOCK_END
-	| BLOCK_BEGIN BLOCK_END
-	;
-class_member_declarations :
-	class_member_declaration
-	 | class_member_declarations class_member_declaration
-	 ;
-class_member_declaration :
-	 field_declaration
-	 | method_declaration
-	 | operator_declaration
-	 | constructor_declaration
-	 | destructor_declaration
-	 | type_declaration
-	 ;
-field_declaration :
-	type variable_declarators ';'
-	|field_modifiers type variable_declarators ';'
-	;
-field_modifiers :
-	field_modifier
-	 | field_modifiers field_modifier
-	 ;
-field_modifier :
-	NEW
-	 | PUBLIC
-	 | PROTECTED
-	 | PRIVATE
-	 ;
-variable_declarators :
-	variable_declarator
-	 | variable_declarators COMMA variable_declarator
-	 ;
-variable_declarator :
-	IDENTIFIER
-	 | IDENTIFIER '=' variable_initializer
-	 ;
-variable_initializer :
-	expression
-	 | array_initializer
-	 ;
-method_declaration :
-	method_header method_body
-	;
-method_header :
-	 method_modifiers return_type member_name '(' formal_parameter_list ')'
-	 | method_modifiers return_type member_name '(' ')'
-	 ;
-method_modifiers :
-	method_modifier
-	 | method_modifiers method_modifier
-	 ;
-method_modifier :
-	NEW
-	 | PUBLIC
-	 | PROTECTED
-	 | PRIVATE
-	 | VIRTUAL
-	 | OVERRIDE
-	 | ABSTRACT
-	 ;
-return_type :
-	type
-	 | VOID
-	 ;
-member_name :
-	IDENTIFIER
-	 | interface_type '.' IDENTIFIER
-	 ;
-method_body :
-	block
-	 | ';'
-	 ;
-formal_parameter_list :
-	fixed_parameters
-	;
-fixed_parameters :
-	fixed_parameter
-	 | fixed_parameters COMMA fixed_parameter
-	 ;
-fixed_parameter :
-	parameter_modifier type IDENTIFIER default_argument
-	| type IDENTIFIER default_argument
-	| parameter_modifier type IDENTIFIER
-	| type IDENTIFIER
-	;
-default_argument :
-	'=' expression
-	;
-parameter_modifier :
-	 OUT
-	 | THIS
-	 ;
-operator_declaration :
-	operator_modifiers operator_declarator operator_body
-	;
-operator_modifiers :
-	operator_modifier
-	 | operator_modifiers operator_modifier
-	 ;
-operator_modifier :
-	PUBLIC
-	;
-operator_declarator :
-	unary_operator_declarator
-	 | binary_operator_declarator
-	 ;
-unary_operator_declarator :
-	type OPERATOR overloadable_unary_operator '(' type IDENTIFIER ')'
-	;
-overloadable_unary_operator :
-	'+'
-	| '-'
-	| '!'
-	| '~'
-	| PLUSPLUS
-	| MINUSMINUS
-	| TRUE
-	| FALSE
-	;
-binary_operator_declarator :
-	type OPERATOR overloadable_binary_operator '(' type IDENTIFIER COMMA type IDENTIFIER ')'
-	;
-overloadable_binary_operator :
-	 | '*'
-	 | '/'
-	 | '%'
-	 | '&'
-	 | '|'
-	 | '^'
-	 | LTLT
-	 | right_shift
-	 | EQEQ
-	 | NOTEQ
-	 | '>'
-	 | '<'
-	 | LEQ
-	 | GEQ
-	 ;
-operator_body :
-	block
-	 | ';'
-	 ;
-constructor_declaration :
-	constructor_modifiers constructor_declarator constructor_body
-	| constructor_declarator constructor_body
-	;
-constructor_modifiers :
-	constructor_modifier
-	 | constructor_modifiers constructor_modifier
-	 ;
-constructor_modifier :
-	PUBLIC
-	 | PROTECTED
-	 | PRIVATE
-	 ;
-constructor_declarator :
-	IDENTIFIER '(' formal_parameter_list ')' constructor_initializer
-	| IDENTIFIER '(' ')' constructor_initializer
-	| IDENTIFIER '(' formal_parameter_list ')'
-	| IDENTIFIER '(' ')'
-	;
-constructor_initializer :
-	':' BASE '(' argument_list ')'
-	| ':' BASE '(' ')'
-	| ':' THIS '(' argument_list ')'
-	| ':' THIS '(' ')'
-	;
-constructor_body :
-	block
-	 | ';'
-	 ;
-destructor_declaration :
-	 '~' IDENTIFIER '(' ')' destructor_body
-	 ;
-destructor_body :
-	block
-	 | ';'
-	 ;
+modifiers_opt
+  : /* Nothing */
+  | modifiers
+  ;
+modifiers
+  : modifier
+  | modifiers modifier
+  ;
+modifier
+  : ABSTRACT
+  | NEW
+  | PRIVATE
+  | PROTECTED
+  | PUBLIC
+  ;
+/***** C.2.6 Classes *****/
+class_declaration
+  : modifiers_opt CLASS IDENTIFIER class_base_opt class_body comma_opt
+  ;
+class_base_opt
+  : /* Nothing */
+  | class_base
+  ;
+class_base
+  : ':' class_type
+  | ':' interface_type_list
+  | ':' class_type COMMA interface_type_list
+  ;
+interface_type_list
+  : type_name
+  | interface_type_list COMMA type_name
+  ;
+class_body
+  : '{' class_member_declarations_opt '}'
+  ;
+class_member_declarations_opt
+  : /* Nothing */
+  | class_member_declarations
+  ;
+class_member_declarations
+  : class_member_declaration
+  | class_member_declarations class_member_declaration
+  ;
+class_member_declaration
+  : field_declaration
+  | method_declaration
+  | operator_declaration
+  | constructor_declaration
+  | destructor_declaration
+  | type_declaration
+  ;
+field_declaration
+  : modifiers_opt type variable_declarators ';'
+  ;
+method_declaration
+  : method_header method_body
+  ;
+method_header
+  : modifiers_opt type qualified_identifier '(' formal_parameter_list_opt ')'
+  | modifiers_opt VOID qualified_identifier '(' formal_parameter_list_opt ')'
+  ;
+formal_parameter_list_opt
+  : /* Nothing */
+  | formal_parameter_list
+  ;
+method_body
+  : block
+  | ';'
+  ;
+formal_parameter_list
+  : formal_parameter
+  | formal_parameter_list COMMA formal_parameter
+  ;
+formal_parameter
+  : fixed_parameter
+  ;
+fixed_parameter
+  : parameter_modifier_opt type IDENTIFIER
+  ;
+parameter_modifier_opt
+  : /* Nothing */
+  | OUT
+  ;
+/* Widen operator_declaration to make modifiers optional */
+operator_declaration
+  : modifiers_opt operator_declarator operator_body
+  ;
+operator_declarator
+  : overloadable_operator_declarator
+  ;
+overloadable_operator_declarator
+  : type OPERATOR overloadable_operator '(' type IDENTIFIER ')'
+  | type OPERATOR overloadable_operator '(' type IDENTIFIER COMMA type IDENTIFIER ')'
+  ;
+overloadable_operator
+  : '+' 
+  | '-' 
+  | '!' 
+  | '~' 
+  | PLUSPLUS 
+  | MINUSMINUS 
+  | TRUE 
+  | FALSE
+  | '*' 
+  | '/' 
+  | '%' 
+  | '&' 
+  | '|' 
+  | '^' 
+  | LTLT 
+  | GTGT 
+  | EQEQ 
+  | NOTEQ 
+  | '>' 
+  | '<' 
+  | GEQ 
+  | LEQ
+  ;
+constructor_declaration
+  : modifiers_opt constructor_declarator constructor_body
+  ;
+constructor_declarator
+  : IDENTIFIER '(' formal_parameter_list_opt ')' constructor_initializer_opt
+  ;
+constructor_initializer_opt
+  : /* Nothing */
+  | constructor_initializer
+  ;
+constructor_initializer
+  : ':' BASE '(' argument_list_opt ')'
+  | ':' THIS '(' argument_list_opt ')'
+  ;
+/* Widen from unsafe_opt to modifiers_opt */
+destructor_declaration
+  : modifiers_opt '~' IDENTIFIER '(' ')' block
+  ;
+operator_body
+  : block
+  | ';'
+  ;
+constructor_body /*** Added by AJ - same as method_body ***/
+  : block
+  | ';'
+  ;
 
-/*(*B.2.8 Structs*) */
-struct_declaration :
-	struct_modifiers STRUCT IDENTIFIER struct_interfaces struct_body ';'
-	| struct_modifiers STRUCT IDENTIFIER struct_body ';'
-	;
-struct_modifiers :
-	struct_modifier
-	 | struct_modifiers struct_modifier
-	 ;
-struct_modifier :
-	NEW
-	 | PUBLIC
-	 | PROTECTED
-	 | PRIVATE
-	 ;
-struct_interfaces :
-	':' interface_type_list
-	;
-struct_body :
-	BLOCK_BEGIN struct_member_declarations BLOCK_END
-	| BLOCK_BEGIN  BLOCK_END
-	;
-struct_member_declarations :
-	struct_member_declaration
-	 | struct_member_declarations struct_member_declaration
-	 ;
-struct_member_declaration :
-	 field_declaration
-	 | method_declaration
-	 | operator_declaration
-	 | constructor_declaration
-	 | type_declaration
-	 ;
+/***** C.2.7 Structs *****/
+struct_declaration
+  : modifiers_opt STRUCT IDENTIFIER struct_interfaces_opt struct_body comma_opt
+  ;
+struct_interfaces_opt
+  : /* Nothing */
+  | struct_interfaces
+  ;
+struct_interfaces
+  : ':' interface_type_list
+  ;
+struct_body
+  : '{' struct_member_declarations_opt '}'
+  ;
+struct_member_declarations_opt
+  : /* Nothing */
+  | struct_member_declarations
+  ;
+struct_member_declarations
+  : struct_member_declaration
+  | struct_member_declarations struct_member_declaration
+  ;
+struct_member_declaration
+  : field_declaration
+  | method_declaration
+  | operator_declaration
+  | constructor_declaration
+  | type_declaration
+  ;
 
-/*(*B.2.9 Arrays*) */
-array_type :
-	non_array_type RANK_SPECIFIER
-	;
-non_array_type :
-	type
-	;
-array_initializer :
-	BLOCK_BEGIN variable_initializer_list BLOCK_END
-	| BLOCK_BEGIN BLOCK_END
-	| BLOCK_BEGIN variable_initializer_list COMMA BLOCK_END
-	;
-variable_initializer_list :
-	variable_initializer
-	| variable_initializer_list COMMA variable_initializer
-	;
+/***** C.2.8 Arrays *****/
+array_initializer
+  : '{' variable_initializer_list_opt '}'
+  | '{' variable_initializer_list COMMA '}'
+  ;
+variable_initializer_list_opt
+  : /* Nothing */
+  | variable_initializer_list
+  ;
+variable_initializer_list
+  : variable_initializer
+  | variable_initializer_list COMMA variable_initializer
+  ;
 
-
-/*(*B.2.10 Interfaces*) */
-interface_declaration :
-	interface_modifiers INTERFACE IDENTIFIER interface_base interface_body ';'
-	| interface_modifiers INTERFACE IDENTIFIER interface_body ';'
-	;
-interface_modifiers :
-	interface_modifier
-	 | interface_modifiers interface_modifier
-	 ;
-interface_modifier :
-	NEW
-	 | PUBLIC
-	 | PROTECTED
-	 | PRIVATE
-	 ;
-interface_base :
-	':' interface_type_list
-	;
-interface_body :
-	BLOCK_BEGIN interface_member_declarations BLOCK_END
-	| BLOCK_BEGIN BLOCK_END
-	;
-interface_member_declarations :
-	interface_member_declaration
-	 | interface_member_declarations interface_member_declaration
-	 ;
-interface_member_declaration :
-	interface_method_declaration
-	;
-interface_method_declaration :
-	 NEW return_type IDENTIFIER '(' formal_parameter_list ')' ';'
-	 | return_type IDENTIFIER '(' formal_parameter_list ')' ';'
-	 | NEW return_type IDENTIFIER '(' ')' ';'
-	 | return_type IDENTIFIER '(' ')' ';'
-	 ;
-
-
-
-
+/***** C.2.9 Interfaces *****/
+interface_declaration
+  : modifiers_opt INTERFACE IDENTIFIER interface_base_opt interface_body comma_opt
+  ;
+interface_base_opt
+  : /* Nothing */
+  | interface_base
+  ;
+interface_base
+  : ':' interface_type_list
+  ;
+interface_body
+  : '{' interface_member_declarations_opt '}'
+  ;
+interface_member_declarations_opt
+  : /* Nothing */
+  | interface_member_declarations
+  ;
+interface_member_declarations
+  : interface_member_declaration
+  | interface_member_declarations interface_member_declaration
+  ;
+interface_member_declaration
+  : interface_method_declaration
+  ;
+/* inline return_type to avoid conflict with interface_property_declaration */
+interface_method_declaration
+  : new_opt type IDENTIFIER '(' formal_parameter_list_opt ')' interface_empty_body
+  | new_opt VOID IDENTIFIER '(' formal_parameter_list_opt ')' interface_empty_body
+  ;
+new_opt
+  : /* Nothing */
+  | NEW
+  ;
+/* mono seems to allow this */
+interface_empty_body
+  : ';'
+  | '{' '}'
+  ;
 
 %%
 
