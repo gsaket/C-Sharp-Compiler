@@ -22,9 +22,7 @@ char LegalList [] = {
     '=', '?','"'
 };
 
-map<int, string> TknStr;
 map<int, vector<char*> > TknStats;
-map<int, int> FreqToken;
 
 %}
 
@@ -89,6 +87,7 @@ RankSpecifier         "["{WhiteSpace}*"]"
 "++"  { return PLUSPLUS; }
 "--"  { return MINUSMINUS; }
 "->"  { return ARROW; }
+"::"  { return COLCOL; }
 
 "int"  {return INT_TYPE; }
 "bool" { return BOOL_TYPE; }
@@ -134,7 +133,7 @@ RankSpecifier         "["{WhiteSpace}*"]"
 "while"      {return WHILE;}
 
 
-{Identifier}          { return IDENTIFIER; }
+{Identifier}          { yylval.ival = 10;return IDENTIFIER; }
 {AtIdentifier}       { return IDENTIFIER; }
 
 .           { if(legalChar(yytext[0])) return yytext[0];
@@ -153,163 +152,6 @@ int legalChar(const char c)
 		}
 	}
   return 0;
-}
-
-void getStrings(){
-
-TknStr[INTEGER_LITERAL]="INTEGER_LITERAL";
-TknStr[CHARACTER_LITERAL]="CHARACTER_LITERAL";
-TknStr[COMMA]="COMMA";
-TknStr[LEFT_BRACKET]="LEFT_BRACKET";
-TknStr[RIGHT_BRACKET]="RIGHT_BRACKET";
-TknStr[RANK_SPECIFIER]="RANK_SPECIFIER";
-TknStr[PLUSEQ]="PLUSEQ";
-TknStr[MINUSEQ]="MINUSEQ";
-TknStr[STAREQ]="STAREQ";
-TknStr[DIVEQ]="DIVEQ";
-TknStr[MODEQ]="MODEQ";
-TknStr[XOREQ]="XOREQ";
-TknStr[ANDEQ]="ANDEQ";
-TknStr[OREQ]="OREQ";
-TknStr[LTLT]="LTLT";
-TknStr[GTGT]="GTGT";
-TknStr[GTGTEQ]="GTGTEQ";
-TknStr[LTLTEQ]="LTLTEQ";
-TknStr[EQEQ]="EQEQ";
-TknStr[NOTEQ]="NOTEQ";
-TknStr[LEQ]="LEQ";
-TknStr[GEQ]="GEQ";
-TknStr[ANDAND]="ANDAND";
-TknStr[OROR]="OROR";
-TknStr[PLUSPLUS]="PLUSPLUS";
-TknStr[MINUSMINUS]="MINUSMINUS";
-TknStr[ARROW]="ARROW";
-TknStr[IDENTIFIER]="IDENTIFIER";
-TknStr[INT_TYPE]="INT_TYPE";
-TknStr[BOOL_TYPE]="BOOL_TYPE";
-TknStr[CHAR_TYPE]="CHAR_TYPE";
-TknStr[ABSTRACT]="ABSTRACT";
-TknStr[BREAK]="BREAK";
-TknStr[BASE]="BASE";
-TknStr[CASE]="CASE";
-TknStr[CLASS]="CLASS";
-TknStr[CONST]="CONST";
-TknStr[CONTINUE]="CONTINUE";
-TknStr[DEFAULT]="DEFAULT";
-TknStr[DO]="DO";
-TknStr[ELSE]="ELSE";
-TknStr[FALSE]="FALSE";
-TknStr[FOR]="FOR";
-TknStr[FOREACH]="FOREACH";
-TknStr[GOTO]="GOTO";
-TknStr[IF]="IF";
-TknStr[IN]="IN";
-TknStr[INTERFACE]="INTERFACE";
-TknStr[NAMESPACE]="NAMESPACE";
-TknStr[NEW]="NEW";
-TknStr[NULL_TYPE]="NULL_TYPE";
-TknStr[OBJECT]="OBJECT";
-TknStr[OPERATOR]="OPERATOR";
-TknStr[OUT]="OUT";
-TknStr[OVERRIDE]="OVERRIDE";
-TknStr[PRIVATE]="PRIVATE";
-TknStr[PROTECTED]="PROTECTED";
-TknStr[PUBLIC]="PUBLIC";
-TknStr[RETURN]="RETURN";
-TknStr[SIZEOF]="SIZEOF";
-TknStr[STRING_TYPE]="STRING_TYPE";
-TknStr[STRUCT]="STRUCT";
-TknStr[SWITCH]="SWITCH";
-TknStr[THIS]="THIS";
-TknStr[TRUE]="TRUE";
-TknStr[TYPEOF]="TYPEOF";
-TknStr[USING]="USING";
-TknStr[VIRTUAL]="VIRTUAL";
-TknStr[VOID]="VOID";
-TknStr[WHILE]="WHILE";
-TknStr[BLOCK_BEGIN]="BLOCK_BEGIN";
-TknStr[BLOCK_END]="BLOCK_END";
-TknStr[STRING_LITERAL]="STRING_LITERAL";
-
-TknStr[(int)('.')]="\'.\'";
-TknStr[(int)(':')]="\':\'";
-TknStr[(int)(';')]="\';\'";
-TknStr[(int)('(')]="\'(\'";
-TknStr[(int)(')')]="\')\'";
-TknStr[(int)('<')]="\'<\'";
-TknStr[(int)('>')]="\'>\'";
-TknStr[(int)('+')]="\'+\'";
-TknStr[(int)('-')]="\'-\'";
-TknStr[(int)('*')]="\'*\'";
-TknStr[(int)('/')]="\'/\'";
-TknStr[(int)('%')]="\'%\'";
-TknStr[(int)('&')]="\'&\'";
-TknStr[(int)('|')]="\'|\'";
-TknStr[(int)('!')]="\'!\'";
-TknStr[(int)('~')]="\'~\'";
-TknStr[(int)('^')]="\'^\'";
-TknStr[(int)('=')]="\'=\'";
-TknStr[(int)('?')]="\'?\'";
-TknStr[(int)('"')]="\'\"\'";
-}
-
-
-int main(int argc, char** argv) {
-	/*
-	 *FILE *myfile = fopen("a.sharpie.file", "r");
-	 *if (!myfile) {
-	 *    cout << "I can't open a.sharpie.file!" << endl;
-	 *    return -1;
-	 *}
-	 *yyin = myfile;
-	 *do {
-	 *    yyparse();
-	 *} while (!feof(yyin));
-	 */
-	FILE *myfile = fopen(argv[1], "r");
-	if (!myfile) {
-	    cout << "Can't open the file!" << endl;
-	    return -1;
-	}
-	yyin = myfile;
-
-	getStrings();
-	int x;
-	while(1){
-		x=yylex();
-		if(x == 0)break;
-		TknStats[x].push_back(strdup(yytext));
-		FreqToken[x]++;
-	}
-	cout<<"Token";
-	for(int i=0;i<10;i++)
-	  cout<<" ";
-	cout<<"Occurences"<<"\t"<<"Lexemes"<<endl;
-	map<int, vector<char*> > ::iterator it;
-	for(it=TknStats.begin();it!=TknStats.end();it++){
-	  int idx=it->X;
-	  int length=TknStr[idx].size();
-	  cout<<TknStr[idx];
-	  int space=20-length;
-	  for(int i=0;i<space;i++)cout<<" ";
-	  cout<<FreqToken[idx]<<"\t\t";
-	  sort(it->Y.begin(),it->Y.end(),comp);
-	  for(int i=0;i<it->Y.size();i++)
-	  {
-	    if(i>0 && strcmp(it->Y[i],it->Y[i-1])==0)
-	      continue;
-	    if(i==0)
-	      cout<<it->Y[i]<<endl;
-	    else 
-	    {
-	      for(int i=0;i<20;i++)
-		cout<<" ";
-	      cout<<"  ";
-	      cout<<"\t\t";
-	      cout<<it->Y[i]<<endl;
-	    }
-	  }
-	}
 }
 
 
