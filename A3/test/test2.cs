@@ -18,7 +18,7 @@ namespace InterfaceApplication {
       public Transaction() {
          tCode = " ";
          date = " ";
-         amount = 0.0;
+         amount = 0;
       }
       public Transaction(string c, string d, double a) {
          tCode = c;
@@ -36,9 +36,9 @@ namespace InterfaceApplication {
    }
    class Tester {
      
-      static void Main(string[] args) {
-         Transaction t1 = new Transaction("001", "8/10/2012", 78900.00);
-         Transaction t2 = new Transaction("002", "9/10/2012", 451900.00);
+      void Main(string[] args) {
+         Transaction t1 = new Transaction("001", "8/10/2012", 78900);
+         Transaction t2 = new Transaction("002", "9/10/2012", 451900);
          
          t1.showTransaction();
          t2.showTransaction();
