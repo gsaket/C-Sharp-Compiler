@@ -11,12 +11,12 @@ namespace PolymorphismApplication {
       void print(string s) {
          Console.WriteLine("Printing string: {0}", s);
       }
-      static void Main(string[] args) {
+      void Main(string[] args) {
          Printdata p = new Printdata();
          // Call print to print integer
          p.print(5);
          // Call print to print float
-         p.print(500.263);
+         p.print(500);
          // Call print to print string
          p.print("Hello C++");
          Console.ReadKey();

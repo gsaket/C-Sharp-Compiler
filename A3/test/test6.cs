@@ -1,21 +1,71 @@
-    using System;  
-    public class Animal{  
-        public virtual void eat(){  
-            Console.WriteLine("Eating...");  
-        }  
-    }  
-    public class Dog: Animal  
-    {  
-        public override void eat()  
-        {  
-            Console.WriteLine("Eating bread...");  
-        }  
-    }  
-    public class TestOverriding  
-    {  
-        public static void Main()  
-        {  
-            Dog d = new Dog();  
-            d.eat();  
-        }  
-    }  
+using System;
+
+using System.Collections.Generic;
+
+using System.Linq;
+
+using System.Text;
+
+namespace Inherit
+
+{
+
+    class inheri : vehicle
+
+    {
+
+        public void Noise()
+
+        {
+
+            Console.WriteLine("All Vehicles Creates Noise !! ");
+
+        }
+
+        void Main(string[] args)
+
+        {
+
+           inheri obj = new inheri();
+
+            obj.mode();
+
+            obj.feature();
+
+            obj.Noise();
+
+            Console.Read();
+
+        }
+
+    }
+
+    class Mode
+
+    {
+
+        public void mode()
+
+        {
+
+            Console.WriteLine("There are Many Modes of Transport !!");
+
+        }
+
+    }
+
+    class vehicle : Mode
+
+    {
+
+        public void feature()
+
+        {
+
+            Console.WriteLine("They Mainly Help in Travelling !!");
+
+        }
+
+    }
+
+}

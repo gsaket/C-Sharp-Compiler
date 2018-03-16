@@ -30,10 +30,10 @@ vector<string> tmp;
 vector<vector<string> > derivation;
 vector<string> tp_;
 
-int main(){
+int main(int argc,char ** argv){
 	ios::sync_with_stdio(false);
 	cin.tie(NULL);
-	ifstream fin("out");
+	ifstream fin(argv[1]);
 	while(!fin.eof()){
 		string s;
 		fin>>s;
@@ -98,6 +98,7 @@ int main(){
 		rep(j,derivation[i].size()){
 			if(j == idx){
 				html += "<font size = \"2\" color=\"red\"> "+derivation[i][j]+" </font>\n";
+				continue;
 			}
 			html += "<font size = \"2\"> "+derivation[i][j]+" </font>\n";
 		}

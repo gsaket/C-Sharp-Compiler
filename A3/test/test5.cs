@@ -18,9 +18,8 @@ namespace OperatorOvlApplication {
       public void setHeight( double hei ) {
          height = hei;
       }
-      
       // Overload + operator to add two Box objects.
-      public static Box operator+ (Box b, Box c) {
+      public Box operator+ (Box b, Box c) {
          Box box = new Box();
          box.length = b.length + c.length;
          box.breadth = b.breadth + c.breadth;
@@ -29,21 +28,21 @@ namespace OperatorOvlApplication {
       }
    }
    class Tester {
-      static void Main(string[] args) {
+      void Main(string[] args) {
          Box Box1 = new Box();   // Declare Box1 of type Box
          Box Box2 = new Box();   // Declare Box2 of type Box
          Box Box3 = new Box();   // Declare Box3 of type Box
-         double volume = 0.0;    // Store the volume of a box here
+         double volume = 0;    // Store the volume of a box here
 
          // box 1 specification
-         Box1.setLength(6.0);
-         Box1.setBreadth(7.0);
-         Box1.setHeight(5.0);
+         Box1.setLength(60);
+         Box1.setBreadth(70);
+         Box1.setHeight(50);
 
          // box 2 specification
-         Box2.setLength(12.0);
-         Box2.setBreadth(13.0);
-         Box2.setHeight(10.0);
+         Box2.setLength(120);
+         Box2.setBreadth(130);
+         Box2.setHeight(100);
 
          // volume of box 1
          volume = Box1.getVolume();

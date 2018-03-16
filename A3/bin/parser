@@ -1,0 +1,10 @@
+#!/bin/bash
+
+file=$1
+file_name=${file:5:5}
+
+./bin/sharpie $file >build/$file_name.raw
+./bin/gen_html build/$file_name.raw >html/$file_name.html
+firefox html/$file_name.html
+
+
