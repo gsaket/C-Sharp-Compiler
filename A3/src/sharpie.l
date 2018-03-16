@@ -17,7 +17,7 @@ bool comp(char* a, char* b)
 
 char LegalList [] = {
     '.', ';', ':',
-    '(', ')', '<', '>',
+    '(', ')','{', '}', '<', '>',
     '+', '-', '*', '/', '%', '&', '|', '!', '~', '^',
     '=', '?','"'
 };
@@ -64,8 +64,6 @@ RankSpecifier         "["{WhiteSpace}*"]"
 "["   { return LEFT_BRACKET; }
 "]"   { return RIGHT_BRACKET; }
 {RankSpecifier}     { return RANK_SPECIFIER; }
-"{"   { return BLOCK_BEGIN; }
-"}"   { return BLOCK_END; }
 "+="  { return PLUSEQ; }
 "-="  { return MINUSEQ; }
 "*="  { return STAREQ; }
