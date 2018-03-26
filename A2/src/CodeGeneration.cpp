@@ -80,6 +80,10 @@ string getRegister(int instr, string var, string operand1 = "$$", string operand
 		}
 	}
 	string reg_ = getAddressDescriptor(var_);
+	if(NextUse[instr][var_] == INF && operand2 != "$$"){
+		//cerr<<var<<" "<<operand1<<" "<<operand2<<endl;
+		return reg_;
+	}
 	// Spill this register reg_
 	x86 += "movl "+reg_+", "+var_+"\n";
 	setAddressDescriptor(var_, "mem");
@@ -217,6 +221,7 @@ string genx86(vector<string> instr){
 			{
 				string lop1 = getLocation(operand1);
 				string lop2 = getLocation(operand2);
+				if(lop1 != destreg)
 				x86 += "movl "+lop1+", "+destreg+"\n";
 				x86 += "addl "+lop2+", "+destreg+"\n";
 			}
