@@ -2,6 +2,7 @@
 1,=,sum,0
 2,=,i,0
 3,=,j,1
+4,return
 4,goto,13
 5,%,D.1732,j,10
 6,ifgoto,==,D.1732,0,8
@@ -15,7 +16,6 @@
 14,goto,15
 15,print,sum
 16,=,D.1736,0
-17,return,D.1736
-18,exit
+17,exit
 
 
