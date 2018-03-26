@@ -2,13 +2,12 @@
 1,=,sum,0
 2,=,i,0
 3,=,j,1
-4,return
 4,goto,13
 5,%,D.1732,j,10
 6,ifgoto,==,D.1732,0,8
 7,goto,10
 8,print,j
-9,goto,<D.1735>
+9,goto,11
 10,=,sum,sum,i
 11,+,i,i,1
 12,*,j,i,2
