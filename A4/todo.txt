@@ -1,0 +1,2 @@
+1. Change namespace_declaration rule to remove qualified identifier
+2. Add labels instead of line numbers
