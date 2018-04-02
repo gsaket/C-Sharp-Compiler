@@ -22,6 +22,7 @@ extern int yylineno;
 
 
 
+string tmpLbl[100]; // memoizing labels for switch case
 map<int, string> TknStr;
 map<int, int> FreqToken;
 vector<vector<string> > R;
@@ -197,8 +198,14 @@ literal
   }
   ;
 boolean_literal
-  : TRUE
-  | FALSE
+  : TRUE {
+    $$=new Attr();
+    ($$->place)="1";
+  }
+  | FALSE {
+    $$=new Attr();
+    ($$->place)="0";
+  }
   ;
 namespace_name
   : qualified_identifier {
@@ -429,10 +436,12 @@ additive_expression
   }
   | additive_expression '+' multiplicative_expression {
     translate($$,$1,$3,"+");
-    for(int i=0;i<(int)(($$->code).size());i++){
-      cout<<($$->code)[i]<<endl;
-    }
-    cout<<"----"<<endl;
+    /*
+     *for(int i=0;i<(int)(($$->code).size());i++){
+     *  cout<<($$->code)[i]<<endl;
+     *}
+     *cout<<"----"<<endl;
+     */
   }
   | additive_expression '-' multiplicative_expression{
     translate($$,$1,$3,"-");
@@ -533,7 +542,10 @@ assignment
     $$->place = $1->place;
     Combine($$->code, $3->code, $1->code);
     string code_= getTAC(2,"=",$1->place,$3->place);
-    cout<<code_<<endl;
+    ($$->code).pb(code_);
+    /*cout<<"assign->->->"<<endl;*/
+    /*cout<<code_<<endl;*/
+    /*cout<<"<-<-<-assign"<<endl;*/
   /*
    *}else{
    *  cerr<<"ERROR: Symbol "<<($1->place)<<" used without declaration."<<endl;
@@ -615,7 +627,9 @@ block
   }
   ;
 statement_list_opt
-  : eps
+  : eps {
+    $$=$1;
+  }
   | statement_list {
     /*cout<<"statement_list_opt"<<endl;*/
     $$ = $1;
@@ -684,9 +698,11 @@ local_variable_declaration
 	  }
 	}
      }
-    for(auto it : ($$->code))
-      cout<<it<<endl;
-    cout<<"******"<<endl;
+    /*
+     *for(auto it : ($$->code))
+     *  cout<<it<<endl;
+     *cout<<"******"<<endl;
+     */
   }
   ;
 variable_declarators
@@ -784,21 +800,69 @@ if_statement
     Combine($$->code, $$->code, $5->code);
     code_="label,"+lnext;
     ($$->code).pb(code_);
-    cout<<"%%%%%%%%%%%"<<endl;
-    for(int i=0;i<($$->code).size();i++){
-      cout<<($$->code)[i]<<endl;
-    }
-    cout<<"%%%%%%%%%%%"<<endl;
+    /*
+     *cout<<"%%%%%%%%%%%"<<endl;
+     *for(int i=0;i<($$->code).size();i++){
+     *  cout<<($$->code)[i]<<endl;
+     *}
+     *cout<<"%%%%%%%%%%%"<<endl;
+     */
   }
   ;
 switch_statement
-  : SWITCH '(' expression ')' switch_block
+  : SWITCH '(' expression ')' switch_block {
+    // refer slides for naming convention
+    cout<<"----$$$$$$$$$$"<<endl;
+    string ltest=getLabel();
+    string lnext=getLabel();
+    $$=new Attr();
+    Combine($$->code, $$->code, $3->code);
+    string code_="goto,"+ltest;
+    ($$->code).pb(code_);
+    for(int i=0;i<(int)($5->sw_sec).size();i++){
+      Attr * sec=($5->sw_sec)[i];
+      string lsec=getLabel();
+      tmpLbl[i]=lsec;
+      code_="label,"+lsec;
+      ($$->code).pb(code_);
+      Combine($$->code, $$->code, sec->code);
+    }
+    code_="goto,"+lnext;
+    ($$->code).pb(code_);
+    code_="label,"+ltest;
+    ($$->code).pb(code_);
+    for(int i=0;i<(int)($5->sw_sec).size();i++){
+      Attr * sec=($5->sw_sec)[i];
+      if((sec->sw_lbl)->sw_default == true){
+	code_="goto,"+tmpLbl[i];
+	($$->code).pb(code_);
+      }else{
+	code_="ifgoto,==,"+((sec->sw_lbl)->place)+","+($3->place)+","+tmpLbl[i];
+	($$->code).pb(code_);
+      }
+    }
+    code_="label,"+lnext;
+    ($$->code).pb(code_);
+    for(int i=0;i<(int)($$->code).size();i++){
+      // change break appropriately
+      if(($$->code)[i] == "goto,-1"){
+	($$->code)[i]="goto,"+lnext;
+      }
+      cout<<($$->code)[i]<<endl;
+    }
+    cout<<"$$$$$$$$$$"<<endl;
+  }
   ;
 switch_block
-  : '{' switch_sections_opt '}'
+  : '{' begin_scope switch_sections_opt '}' {
+    $$=$3;
+    EndScope();
+  }
   ;
 switch_sections_opt
-  : eps
+  : eps {
+    $$=$1;
+  }
   | switch_sections {
     $$=$1;
   }
@@ -806,19 +870,31 @@ switch_sections_opt
 switch_sections
   : switch_section {
     $$=$1;
+    ($$->sw_sec).pb($1);
   }
-  | switch_sections switch_section
+  | switch_sections switch_section {
+    $$=$1;
+    ($$->sw_sec).pb($2);
+  }
   ;
 switch_section
-  : switch_labels statement_list
+  : switch_label statement_list {
+    $$=$2;
+    ($$->sw_lbl)=$1;
+  }
   ;
 switch_labels
   : switch_label
   | switch_labels switch_label
   ;
 switch_label
-  : CASE constant_expression ':'
-  | DEFAULT ':'
+  : CASE constant_expression ':' {
+    $$=$2;
+  }
+  | DEFAULT ':' {
+    $$=new Attr();
+    ($$->sw_default)=true;
+  }
   ;
 iteration_statement
   : while_statement {
@@ -835,7 +911,31 @@ iteration_statement
   }
   ;
 while_statement
-  : WHILE '(' boolean_expression ')' embedded_statement
+  : WHILE '(' boolean_expression ')' embedded_statement {
+    $$=new Attr();
+    string lbegin=getLabel();
+    string lnext=getLabel();
+    string ltrue=getLabel();
+    string code_="label,"+lbegin;
+    ($$->code).pb(code_);
+    Combine($$->code, $$->code, $3->code);
+    code_="ifgoto,==,1,"+($3->place)+","+ltrue;
+    ($$->code).pb(code_);
+    code_="goto,"+lnext;
+    ($$->code).pb(code_);
+    code_="label,"+ltrue;
+    ($$->code).pb(code_);
+    Combine($$->code, $$->code, $5->code);
+    code_="goto,"+lbegin;
+    ($$->code).pb(code_);
+    code_="label,"+lnext;
+    ($$->code).pb(code_);
+    cout<<"-----^^^^^^^^^"<<endl;
+    for(int i=0;i<(int)($$->code).size();i++){
+      cout<<($$->code)[i]<<endl;
+    }
+    cout<<"^^^^^^^^^^^"<<endl;
+  }
   ;
 do_statement
   : DO embedded_statement WHILE '(' boolean_expression ')' ';'
@@ -873,13 +973,21 @@ foreach_statement
   : FOREACH '(' type IDENTIFIER IN expression ')' embedded_statement
   ;
 jump_statement
-  : break_statement
+  : break_statement {
+    $$=$1;
+  }
   | continue_statement
   | goto_statement
-  | return_statement
+  | return_statement {
+    $$=$1;
+  }
   ;
 break_statement
-  : BREAK ';'
+  : BREAK ';' {
+    $$=new Attr();
+    string code_="goto,-1";
+    ($$->code).pb(code_);
+  }
   ;
 continue_statement
   : CONTINUE ';'
@@ -888,11 +996,19 @@ goto_statement
   : GOTO IDENTIFIER ';'
   ;
 return_statement
-  : RETURN expression_opt ';'
+  : RETURN expression_opt ';' {
+    $$=$2;
+    string code_="return"+($2->place);
+    ($$->code).pb(code_);
+  }
   ;
 expression_opt
-  : eps
-  | expression
+  : eps {
+    $$=$1;
+  }
+  | expression {
+    $$=$1;
+  }
   ;
 
 compilation_unit
