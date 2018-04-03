@@ -1,7 +1,7 @@
-bin/sharpie: build/lex.yy.c build/sharpie.tab.c build/sharpie.tab.h
+bin/sharpie: build/lex.yy.c build/sharpie.tab.c build/sharpie.tab.h include/attr.h
 	g++ build/sharpie.tab.c build/lex.yy.c -lfl -o bin/sharpie
 
-build/sharpie.tab.c build/sharpie.tab.h: src/sharpie.y
+build/sharpie.tab.c build/sharpie.tab.h: src/sharpie.y include/attr.h
 	bison -d src/sharpie.y
 	mv sharpie.tab.c build
 	mv sharpie.tab.h build

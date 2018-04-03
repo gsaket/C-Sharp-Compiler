@@ -91,7 +91,7 @@ public :
     void insertFunc(string id, string ret_typ, vector<string> par_typs, int par_num){
         pair<string,string> Temp;
         Temp.X = ret_typ; // remember it is return type for function
-        Temp.Y = "fucntion";
+        Temp.Y = "function";
         Node[id]=Temp;
         pair<int ,vector<string> > Temp_;
         Temp_.X=par_num;
