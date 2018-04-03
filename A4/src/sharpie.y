@@ -45,7 +45,7 @@ string getTAC(int flag, string OP, string dest, string op1, string op2="NONE"){
 }
 
 void translate(Attr* &p, Attr* q, Attr* r, string OP){
-    string tp = CurTable->getTemp();
+    string tp = CurTable->getTemp("int");
     p = new Attr();
     p->place = tp;
     Combine(p->code,q->code, r->code);
@@ -237,7 +237,10 @@ simple_type
   : primitive_type {
     $$=$1;
   }
-  | class_type
+  | class_type {
+    // Not used
+    $$=$1;
+  }
   ;
 primitive_type
   : numeric_type {
@@ -287,33 +290,68 @@ rank_specifiers_opt
   | rank_specifier
   ;
 variable_reference
-  : expression
+  : expression {
+    $$=$1;
+  }
   ;
 argument_list
-  : argument
-  | argument_list COMMA argument
+  : argument {
+    $$=$1;
+    ($$->arg_lst).pb($1);
+  }
+  | argument_list COMMA argument {
+    // TODO: Check usage
+    $$=$1;
+    ($$->arg_lst).pb($3);
+  }
   ;
 argument
-  : expression
+  : expression {
+    $$=$1;
+  }
   | OUT variable_reference
   ;
 primary_expression
-  : parenthesized_expression
-  | primary_expression_no_parenthesis
+  : parenthesized_expression {
+    $$=$1;
+  }
+  | primary_expression_no_parenthesis {
+    $$=$1;
+  }
   ;
 primary_expression_no_parenthesis
-  : literal
-  | array_creation_expression
-  | member_access
-  | invocation_expression
-  | element_access
-  | this_access
-  | base_access
-  | new_expression
-  | typeof_expression
+  : literal {
+    $$=$1;
+  }
+  | array_creation_expression {
+    $$=$1;
+  }
+  | member_access {
+    $$=$1;
+  }
+  | invocation_expression {
+    $$=$1;
+  }
+  | element_access {
+    $$=$1;
+  }
+  | this_access {
+    $$=$1;
+  }
+  | base_access {
+    $$=$1;
+  }
+  | new_expression {
+    $$=$1;
+  }
+  | typeof_expression {
+    $$=$1;
+  }
   ;
 parenthesized_expression
-  : '(' expression ')'
+  : '(' expression ')' {
+    $$=$2;
+  }
   ;
 member_access
   : primary_expression '.' IDENTIFIER
@@ -322,12 +360,48 @@ member_access
   ;
 invocation_expression
   : primary_expression_no_parenthesis '(' argument_list_opt ')'
-  | qualified_identifier '(' argument_list_opt ')'
-  
+  | qualified_identifier '(' argument_list_opt ')' {
+      string FunName=($1->place);
+      int arg_cnt=(int)($3->arg_lst).size();
+      if(!(CurTable->lookup(($1->place)))){
+	cerr<<"Error Line "<<yylineno<<": Function "<<($1->place)<<" Not defined"<<endl;
+	exit(0);
+      }
+      if((CurTable->Node)[FunName].Y != "function"){
+	cerr<<"Error Line "<<yylineno<<": "<<($1->place)<<" Ain't No function!"<<endl;
+	exit(0);
+      }
+      if(arg_cnt  != (CurTable->Args)[FunName].X){
+	cerr<<"Error Line "<<yylineno<<": "<<($1->place)<<" Number of arguments don't match"<<endl;
+	exit(0);
+      }
+      $$=new Attr();
+      string code_;
+      for(int i=0;i<arg_cnt;i++){
+	Attr* CurArg=($3->arg_lst)[i];
+	Combine($$->code, $$->code, CurArg->code);
+      }
+      for(int i=0;i<arg_cnt;i++){
+	Attr* CurArg=($3->arg_lst)[i];
+	code_="param,"+(CurArg->place);
+	($$->code).pb(code_);
+      }
+      string RetType=(CurTable->Node)[FunName].X;
+      string tp="NULL";
+      if(RetType != "void"){
+	tp=CurTable->getTemp(RetType);
+      }
+      code_="call,"+FunName+","+to_string(arg_cnt)+","+tp;
+      ($$->code).pb(code_);
+  }
   ;
 argument_list_opt
-  : eps
-  | argument_list
+  : eps {
+    $$=$1;
+  }
+  | argument_list {
+    $$=$1;
+  }
   ;
 element_access
   : primary_expression LEFT_BRACKET expression_list RIGHT_BRACKET
@@ -593,6 +667,14 @@ statement
   | embedded_statement {
     /*cout<<"statement ->embedded_statement asda"<<endl;*/
     $$=$1;
+/*
+ *    cout<<"st......"<<endl;
+ *    for(int i=0;i<($1->code).size();i++){
+ *      cout<<($1->code)[i]<<endl;
+ *    }
+ *    cout<<"ed......"<<endl;
+ *
+ */
   }
   ;
 embedded_statement
@@ -619,8 +701,7 @@ embedded_statement
 
 block
   : '{' begin_scope statement_list_opt '}'{
-  /*: '{' statement_list_opt '}'{*/
-    $$ = $2;
+    $$ = $3;
     /*cout<<"dgdfgg"<<endl;*/
     EndScope();
     /*cout<<"Enddgdfgg"<<endl;*/
@@ -741,7 +822,7 @@ expression_statement
   : statement_expression ';' {
     /*cout<<"expression_statement -> statement_expression"<<endl;*/
     $$=$1;
-  }
+   }
   ;
 statement_expression
   : invocation_expression {
@@ -848,9 +929,13 @@ switch_statement
       if(($$->code)[i] == "goto,-1"){
 	($$->code)[i]="goto,"+lnext;
       }
+    }
+
+    cout<<"st$$$$$$$$$$"<<endl;
+    for(int i=0;i<(int)($$->code).size();i++){
       cout<<($$->code)[i]<<endl;
     }
-    cout<<"$$$$$$$$$$"<<endl;
+    cout<<"ed$$$$$$$$$$"<<endl;
   }
   ;
 switch_block
@@ -930,6 +1015,16 @@ while_statement
     ($$->code).pb(code_);
     code_="label,"+lnext;
     ($$->code).pb(code_);
+    for(int i=0;i<(int)($$->code).size();i++){
+      if(($$->code)[i] == "goto,-1"){
+	// change break appropriately
+	($$->code)[i]="goto,"+lnext;
+      }else if(($$->code)[i] == "goto,-2"){
+	// change continue appropriately
+	($$->code)[i]="goto,"+lbegin;
+      }
+    }
+
     cout<<"-----^^^^^^^^^"<<endl;
     for(int i=0;i<(int)($$->code).size();i++){
       cout<<($$->code)[i]<<endl;
@@ -941,33 +1036,93 @@ do_statement
   : DO embedded_statement WHILE '(' boolean_expression ')' ';'
   ;
 for_statement
-  : FOR '(' for_initializer_opt ';' for_condition_opt ';' for_iterator_opt ')' embedded_statement
+  : FOR '(' for_initializer_opt ';' for_condition_opt ';' for_iterator_opt ')' embedded_statement {
+    $$=new Attr();
+    string lbegin=getLabel();
+    string lnext=getLabel();
+    string ltrue=getLabel();
+    Combine($$->code, $$->code, $3->code);
+    string code_="label,"+lbegin;
+    ($$->code).pb(code_);
+    Combine($$->code, $$->code, $5->code);
+    code_="ifgoto,==,1,"+($5->place)+","+ltrue;
+    ($$->code).pb(code_);
+    code_="goto,"+lnext;
+    ($$->code).pb(code_);
+    code_="label,"+ltrue;
+    ($$->code).pb(code_);
+    Combine($$->code, $$->code, $9->code);
+    Combine($$->code, $$->code, $7->code);
+    code_="goto,"+lbegin;
+    ($$->code).pb(code_);
+    code_="label,"+lnext;
+    ($$->code).pb(code_);
+    for(int i=0;i<(int)($$->code).size();i++){
+      if(($$->code)[i] == "goto,-1"){
+	// change break appropriately
+	($$->code)[i]="goto,"+lnext;
+      }else if(($$->code)[i] == "goto,-2"){
+	// change continue appropriately
+	($$->code)[i]="goto,"+lbegin;
+      }
+    }
+    cout<<"st/////////"<<endl;
+    for(int i=0;i<(int)($$->code).size();i++){
+      cout<<($$->code)[i]<<endl;
+    }
+    cout<<"ed/////////"<<endl;
+  }
   ;
 for_initializer_opt
-  : eps
-  | for_initializer
+  : eps {
+    $$=$1;
+  }
+  | for_initializer {
+    $$=$1;
+  }
   ;
 for_condition_opt
-  : eps
-  | for_condition
+  : eps {
+    $$=$1;
+  }
+  | for_condition {
+    $$=$1;
+  }
   ;
 for_iterator_opt
-  : eps
-  | for_iterator
+  : eps {
+    $$=$1;
+  }
+  | for_iterator {
+    $$=$1;
+  }
   ;
 for_initializer
-  : local_variable_declaration
-  | statement_expression_list
+  : local_variable_declaration {
+    $$=$1;
+  }
+  | statement_expression_list {
+    $$=$1;
+  }
   ;
 for_condition
-  : boolean_expression
+  : boolean_expression {
+    $$=$1;
+  }
   ;
 for_iterator
-  : statement_expression_list
+  : statement_expression_list {
+    $$=$1;
+  }
   ;
 statement_expression_list
-  : statement_expression
-  | statement_expression_list COMMA statement_expression
+  : statement_expression {
+    $$=$1;
+  }
+  | statement_expression_list COMMA statement_expression {
+    $$=$1;
+    Combine($$->code, $$->code, $3->code);
+  }
   ;
 foreach_statement
   : FOREACH '(' type IDENTIFIER IN expression ')' embedded_statement
@@ -976,7 +1131,9 @@ jump_statement
   : break_statement {
     $$=$1;
   }
-  | continue_statement
+  | continue_statement {
+    $$=$1;
+  }
   | goto_statement
   | return_statement {
     $$=$1;
@@ -990,7 +1147,11 @@ break_statement
   }
   ;
 continue_statement
-  : CONTINUE ';'
+  : CONTINUE ';' {
+    $$=new Attr();
+    string code_="goto,-2";
+    ($$->code).pb(code_);
+  }
   ;
 goto_statement
   : GOTO IDENTIFIER ';'
@@ -998,7 +1159,7 @@ goto_statement
 return_statement
   : RETURN expression_opt ';' {
     $$=$2;
-    string code_="return"+($2->place);
+    string code_="return,"+($2->place);
     ($$->code).pb(code_);
   }
   ;
@@ -1012,23 +1173,46 @@ expression_opt
   ;
 
 compilation_unit
-  : using_directives_opt 
-  | using_directives_opt namespace_member_declarations
+  : using_directives_opt {
+    $$=$1;
+  }
+  | using_directives_opt namespace_member_declarations {
+    $$=$2;
+    cout<<"------CODE-----"<<endl;
+    for(int i=0;i<(int)($$->code).size();i++){
+      cout<<($$->code)[i]<<endl;
+    }
+    cout<<"------END--CODE-----"<<endl;
+  }
   ;
 using_directives_opt
-  : eps
-  | using_directives
+  : eps {
+    $$=$1;
+  }
+  | using_directives {
+    $$=$1;
+  }
   ;
 namespace_member_declarations_opt
-  : eps
-  | namespace_member_declarations
+  : eps {
+    $$=$1;
+  }
+  | namespace_member_declarations {
+    $$=$1;
+  }
   ;
 namespace_declaration
-  : NAMESPACE qualified_identifier namespace_body comma_opt
+  : NAMESPACE qualified_identifier namespace_body comma_opt {
+  
+  }
   ;
 comma_opt
-  : eps
-  | ';'
+  : eps {
+    $$=$1;
+  }
+  | ';' {
+    $$=new Attr();
+  }
   ;
 qualified_identifier
   : IDENTIFIER {
@@ -1036,20 +1220,28 @@ qualified_identifier
 	$$->place = string($1);
   }
   | qualifier IDENTIFIER{
-    
+    // not used
+    $$=new Attr();
+    $$->place = string($2);
   }
   ;
 qualifier
   : IDENTIFIER '.'{
-    
+    // not used
+    $$=new Attr();
+    $$->place = string($1);
   }
   | qualifier IDENTIFIER '.' {
-  
+    // not used
+    $$=new Attr();
+    $$->place = string($2);
   }
   ;
 namespace_body
   : '{' using_directives_opt namespace_member_declarations_opt '}'
   ;
+
+
 using_directives
   : using_directive
   | using_directives using_directive
@@ -1064,18 +1256,37 @@ using_alias_directive
 using_namespace_directive
   : USING namespace_name ';'
   ;
+
+
 namespace_member_declarations
-  : namespace_member_declaration
-  | namespace_member_declarations namespace_member_declaration
+  : namespace_member_declaration {
+    $$=$1;
+  }
+  | namespace_member_declarations namespace_member_declaration {
+    // not here
+    $$=$1;
+    cerr<<"Not expected here"<<endl;
+    Combine($$->code, $$->code, $2->code);
+  }
   ;
 namespace_member_declaration
-  : namespace_declaration
-  | type_declaration
+  : namespace_declaration {
+    $$=$1;
+  }
+  | type_declaration {
+    $$=$1;
+  }
   ;
 type_declaration
-  : class_declaration
-  | struct_declaration
-  | interface_declaration
+  : class_declaration {
+    $$=$1;
+  }
+  | struct_declaration {
+    $$=$1;
+  }
+  | interface_declaration {
+    $$=$1;
+  }
   ;
 
 modifiers_opt
@@ -1094,7 +1305,10 @@ modifier
   | PUBLIC
   ;
 class_declaration
-  : modifiers_opt CLASS IDENTIFIER class_base_opt class_body comma_opt
+  : modifiers_opt CLASS IDENTIFIER class_base_opt class_body comma_opt {
+    // CLASS IDENTIFIER class_body
+    $$=$5;
+  }
   ;
 class_base_opt
   : eps
@@ -1110,58 +1324,141 @@ interface_type_list
   | interface_type_list COMMA type_name
   ;
 class_body
-  : '{' class_member_declarations_opt '}'
+  : '{' class_member_declarations_opt '}' {
+     $$=$2;
+  }
   ;
 class_member_declarations_opt
-  : eps
-  | class_member_declarations
+  : eps {
+    $$=$1;
+  }
+  | class_member_declarations {
+    $$=$1;
+  }
   ;
 class_member_declarations
-  : class_member_declaration
-  | class_member_declarations class_member_declaration
+  : class_member_declaration {
+    $$=$1;
+  }
+  | class_member_declarations class_member_declaration {
+    $$=$1;
+    Combine($$->code, $$->code, $2->code);
+  }
   ;
 class_member_declaration
-  : field_declaration
-  | method_declaration
-  | operator_declaration
-  | constructor_declaration
-  | destructor_declaration
-  | type_declaration
+  : field_declaration {
+    $$=$1;
+  }
+  | method_declaration {
+    $$=$1;
+  }
+  | operator_declaration {
+    $$=$1;
+  }
+  | constructor_declaration {
+    $$=$1;
+  }
+  | destructor_declaration {
+    $$=$1;
+  }
+  | type_declaration {
+    $$=$1;
+  }
   ;
 field_declaration
   : modifiers_opt type variable_declarators ';'
   ;
 method_declaration
-  : method_header method_body
+  : method_header method_body {
+/* 	// updated
+ *      $$=new Attr();
+ *      string code_="function,"+($1->place);
+ *      ($$->code).pb(code_);
+ *      Combine($$->code, $$->code, $2->code);
+ *
+ */
+      string ret_typ=($1->ret_typ);
+      string method_name=($1->place);
+      $$=new Attr();
+      string code_="function,"+method_name;
+      ($$->code).pb(code_);
+      int par_cnt=(int)($1->par_lst).size();
+      for(int i=par_cnt-1;i>=0;i--){
+	code_="pop,"+((($1->par_lst)[i])->place);
+	($$->code).pb(code_);
+      }
+      Combine($$->code, $$->code, $2->code);
+  }
   ;
 method_header
-  : modifiers_opt type qualified_identifier '(' formal_parameter_list_opt ')'
-  | modifiers_opt VOID qualified_identifier '(' formal_parameter_list_opt ')'
+  : modifiers_opt type qualified_identifier '(' formal_parameter_list_opt ')' {
+    $$=$5;
+    ($$->place)=($3->place);
+    ($$->ret_typ)=($2->type);
+    int par_cnt=(int)($5->par_lst).size();
+    vector<string> par_typs;
+    for(int i=0;i<par_cnt;i++){
+      par_typs.pb((($5->par_lst)[i])->type);
+    }
+    CurTable->insertFunc($$->place, $$->ret_typ, par_typs, par_cnt);
+  }
+  | modifiers_opt VOID qualified_identifier '(' formal_parameter_list_opt ')' {
+    $$=$5;
+    ($$->place)=($3->place);
+    ($$->ret_typ)="void";
+    int par_cnt=(int)($5->par_lst).size();
+    vector<string> par_typs;
+    for(int i=0;i<par_cnt;i++){
+      par_typs.pb((($5->par_lst)[i])->type);
+    }
+    CurTable->insertFunc($$->place, $$->ret_typ, par_typs, par_cnt);  }
   ;
 formal_parameter_list_opt
-  : eps
-  | formal_parameter_list
+  : eps {
+    $$=$1;
+  }
+  | formal_parameter_list {
+    $$=$1;
+  }
   ;
 method_body
   : block {
     /*cout<<"sddadadee"<<endl;*/
     $$=$1;
   }
-  | ';'
+  | ';' {
+    $$=new Attr();
+  }
   ;
 formal_parameter_list
-  : formal_parameter
-  | formal_parameter_list COMMA formal_parameter
+  : formal_parameter {
+    $$=$1;
+    ($$->par_lst).pb($1);
+  }
+  | formal_parameter_list COMMA formal_parameter {
+    $$=$1;
+    ($$->par_lst).pb($3);
+  }
   ;
 formal_parameter
-  : fixed_parameter
+  : fixed_parameter {
+    $$=$1;
+  }
   ;
 fixed_parameter
-  : parameter_modifier_opt type IDENTIFIER
+  : parameter_modifier_opt type IDENTIFIER {
+    $$=new Attr();
+    ($$->place)=string($3);
+    ($$->type)=($2->type);
+  }
   ;
 parameter_modifier_opt
-  : eps
-  | OUT
+  : eps {
+    $$=$1;
+  }
+  | OUT {
+    // Not used
+  }
   ;
 operator_declaration
   : modifiers_opt operator_declarator operator_body
