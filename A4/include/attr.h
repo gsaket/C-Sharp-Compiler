@@ -111,6 +111,7 @@ public :
         Node[id]=Temp;
         pair<int ,vector<string> > Temp_;
         Temp_.X=par_num;
+        //cout<<par_typs.size()<<endl;
         Temp_.Y=par_typs;
         Args[id]=Temp_;
     }

@@ -39,32 +39,6 @@ void Combine(vector<string> &a, vector<string> b, vector<string> c){
   a=b;
 }
 
-string getTAC(int flag, string OP, string dest, string op1, string op2="NONE"){
-  if(flag == 1){
-    return OP+","+dest+","+op1+","+op2;
-  }
-  if(flag == 2){
-    return OP+","+dest+","+op1;
-  }
-}
-
-void translate(Attr* &p, Attr* q, Attr* r, string OP){
-    if(!(CurTable->lookup(q->place))){
-      cerr<<"ERROR: Line: "<<(yylineno)<<(q->place)<<" used without declaration."<<endl;
-      exit(0);
-    }
-    if(!(CurTable->lookup(r->place))){
-      cerr<<"ERROR: Line: "<<(yylineno)<<(r->place)<<" used without declaration."<<endl;
-      exit(0);
-    }
-    string tp = CurTable->getTemp("int");
-    p = new Attr();
-    p->place = tp;
-    Combine(p->code,q->code, r->code);
-    string code_ = getTAC(1, OP, p->place, q->place, r->place);
-    p->code.pb(code_);
-}
-
 void BeginScope(){
   SymTable* newTable = new SymTable();
   (CurTable->children).pb(newTable);
@@ -98,6 +72,68 @@ string getLabel(){
   CurLabel++;
   return "L"+to_string(CurLabel);
 }
+
+
+string getTyp(string s){
+  SymTable* DeclTbl=getDeclScope(s, CurTable);
+  return (DeclTbl->Node)[s].X;
+}
+
+string getCat(string s){
+  SymTable* DeclTbl=getDeclScope(s, CurTable);
+  return (DeclTbl->Node)[s].Y;
+}
+
+
+
+bool CheckTyp(Attr* a, Attr* b, string typ){
+    string typ1=getTyp(a->place);
+    string typ2=getTyp(b->place);
+    if(typ == "null"){
+      if(typ1 != typ2){
+	cerr<<"ERROR: Line: "<<(yylineno)<<" Symbols "<<(a->place)<<" and "<<(b->place)<<" are of type "<<typ1<<" and "<<typ2<<". They can't be compared!"<<endl;
+	exit(0);
+      }
+      return true;
+    }
+    if(typ1 != "int"){
+      cerr<<"ERROR: Line: "<<(yylineno)<<" Symbol "<<(a->place)<<" is of type "<<typ1<<". Expected type: int"<<endl;
+      exit(0);
+    }
+    if(typ2 != "int"){
+      cerr<<"ERROR: Line: "<<(yylineno)<<" Symbol "<<(b->place)<<" is of type "<<typ2<<". Expected type: int"<<endl;
+      exit(0);
+    }
+    return true;
+}
+
+string getTAC(int flag, string OP, string dest, string op1, string op2="NONE"){
+  if(flag == 1){
+    return OP+","+dest+","+op1+","+op2;
+  }
+  if(flag == 2){
+    return OP+","+dest+","+op1;
+  }
+}
+
+void translate(Attr* &p, Attr* q, Attr* r, string OP, string ret_typ="int"){
+    if(!(CurTable->lookup(q->place))){
+      cerr<<"ERROR: Line: "<<(yylineno)<<(q->place)<<" used without declaration."<<endl;
+      exit(0);
+    }
+    if(!(CurTable->lookup(r->place))){
+      cerr<<"ERROR: Line: "<<(yylineno)<<(r->place)<<" used without declaration."<<endl;
+      exit(0);
+    }
+    string tp = CurTable->getTemp(ret_typ);
+    p = new Attr();
+    p->place = tp;
+    Combine(p->code,q->code, r->code);
+    string code_ = getTAC(1, OP, p->place, q->place, r->place);
+    p->code.pb(code_);
+}
+
+
 
 
 %}
@@ -268,6 +304,7 @@ non_array_type
     $$=$1;
   }
   | type_name {
+    // not used
     $$=$1;
   }
   ;
@@ -425,6 +462,20 @@ invocation_expression
 	Attr* CurArg=($3->arg_lst)[i];
 	code_="param,"+(CurArg->place);
 	($$->code).pb(code_);
+
+	// check declartion of initializer
+	if(!(CurTable->lookup(CurArg->place))){
+	  cerr<<"ERROR: Line: "<<(yylineno)<<" "<<(CurArg->place)<<" used without declaration."<<endl;
+	  exit(0);
+	}
+	// check type compatibility
+	string typ1=((DeclTbl->Args)[FunName].Y)[i];
+	string typ2=getTyp(CurArg->place);
+	if(typ1 != typ2){
+	  cerr<<"ERROR: Line: "<<(yylineno)<<" "<<(CurArg->place)<<" has type "<<typ2<<". Expected type "<<typ1<<endl;
+	  exit(0);
+	}
+
       }
       string RetType=(DeclTbl->Node)[FunName].X;
       string tp="NULL";
@@ -625,12 +676,15 @@ multiplicative_expression
   }
   | multiplicative_expression '*' unary_expression {
     translate($$,$1,$3,"*");
+    CheckTyp($1,$3,"int");
   }
   | multiplicative_expression '/' unary_expression {
     translate($$,$1,$3,"/");
+    CheckTyp($1,$3,"int");
   }
   | multiplicative_expression '%' unary_expression{
     translate($$,$1,$3,"%");
+    CheckTyp($1,$3,"int");
   }
   ;
 additive_expression
@@ -639,6 +693,7 @@ additive_expression
   }
   | additive_expression '+' multiplicative_expression {
     translate($$,$1,$3,"+");
+    CheckTyp($1,$3,"int");
     /*
      *for(int i=0;i<(int)(($$->code).size());i++){
      *  cout<<($$->code)[i]<<endl;
@@ -648,6 +703,7 @@ additive_expression
   }
   | additive_expression '-' multiplicative_expression{
     translate($$,$1,$3,"-");
+    CheckTyp($1,$3,"int");
   }
   ;
 shift_expression
@@ -656,9 +712,11 @@ shift_expression
   }
   | shift_expression LTLT additive_expression{
     translate($$,$1,$3,"<<");
+    CheckTyp($1,$3,"int");
   }
   | shift_expression GTGT additive_expression{
     translate($$,$1,$3,">>");
+    CheckTyp($1,$3,"int");
   }
   ;
 relational_expression
@@ -666,16 +724,20 @@ relational_expression
     $$ = $1;
   }
   | relational_expression '<' shift_expression{
-    translate($$,$1,$3,"<");
+    translate($$,$1,$3,"<","bool");
+    CheckTyp($1,$3,"int");
   }
   | relational_expression '>' shift_expression{
-    translate($$,$1,$3,">");
+    translate($$,$1,$3,">","bool");
+    CheckTyp($1,$3,"int");
   }
   | relational_expression LEQ shift_expression{
-    translate($$,$1,$3,"<=");
+    translate($$,$1,$3,"<=","bool");
+    CheckTyp($1,$3,"int");
   }
   | relational_expression GEQ shift_expression{
-    translate($$,$1,$3,">=");
+    translate($$,$1,$3,">=","bool");
+    CheckTyp($1,$3,"int");
   }
   ;
 equality_expression
@@ -683,10 +745,13 @@ equality_expression
     $$=$1;
   }
   | equality_expression EQEQ relational_expression{
-    translate($$,$1,$3,"==");
+    translate($$,$1,$3,"==","bool");
+    // can compare char/int/bool
+    CheckTyp($1,$3,"null");
   }
   | equality_expression NOTEQ relational_expression{
-    translate($$,$1,$3,"!=");
+    translate($$,$1,$3,"!=","bool");
+    CheckTyp($1,$3,"null");
   }
   ;
 and_expression
@@ -695,6 +760,7 @@ and_expression
   }
   | and_expression '&' equality_expression{
     translate($$,$1,$3,"&");
+    CheckTyp($1,$3,"int");
   }
   ;
 exclusive_or_expression
@@ -703,6 +769,7 @@ exclusive_or_expression
   }
   | exclusive_or_expression '^' and_expression{
     translate($$,$1,$3,"^");
+    CheckTyp($1,$3,"int");
   }
   ;
 inclusive_or_expression
@@ -711,6 +778,7 @@ inclusive_or_expression
   }
   | inclusive_or_expression '|' exclusive_or_expression{
     translate($$,$1,$3,"|");
+    CheckTyp($1,$3,"int");
   }
   ;
 conditional_and_expression
@@ -718,7 +786,8 @@ conditional_and_expression
     $$=$1;
   }
   | conditional_and_expression ANDAND inclusive_or_expression{
-    translate($$,$1,$3,"&&");
+    translate($$,$1,$3,"&&","bool");
+    CheckTyp($1,$3,"bool");
   }
   ;
 conditional_or_expression
@@ -726,7 +795,8 @@ conditional_or_expression
     $$=$1;
   }
   | conditional_or_expression OROR conditional_and_expression{
-    translate($$,$1,$3,"||");
+    translate($$,$1,$3,"||","bool");
+    CheckTyp($1,$3,"bool");
   }
   ;
 conditional_expression
@@ -740,9 +810,16 @@ conditional_expression
 assignment
 : unary_expression assignment_operator expression {
   // TODO: handle others later
-    $$=new Attr();
+  $$=new Attr();
+  // Left side shouldn't be a literal
   if(CurTable->lookup($1->place) && CurTable->lookup($3->place)){
+    string typ1;
+    string cat1;
+    string a1;
     if(($1->array_element) == true){
+      typ1=getTyp(($1->array_name));
+      cat1=getCat(($1->array_name));
+      a1=($1->array_name);
       // update, input, array, offset
       $$->place=$3->place;
       int lcode=(int)($1->code).size();
@@ -750,11 +827,24 @@ assignment
       ($1->code)[lcode-1]=code_;
       Combine($$->code, $3->code, $1->code);
     }else{
+      typ1=getTyp(($1->place));
+      cat1=getCat(($1->place));
+      a1=($1->place);
       $$->place = $1->place;
       Combine($$->code, $3->code, $1->code);
       string code_= getTAC(2,"=",$1->place,$3->place);
       ($$->code).pb(code_);
     }
+    string typ2=getTyp(($3->place));
+    if(typ1 != typ2){
+	cerr<<"ERROR: Line: "<<(yylineno)<<" Symbols "<<(a1)<<" and "<<($3->place)<<" are of type "<<typ1<<" and "<<typ2<<". Assignment not possible."<<endl;
+	exit(0);
+    }
+    if(cat1 == "literal"){
+	cerr<<"ERROR: Line: "<<(yylineno)<<" Symbol "<<($1->place)<<" is a literal. Can't be assigned!"<<endl;
+	exit(0);
+    }
+
   }else if(!(CurTable->lookup($1->place))){
     cerr<<"ERROR: Line: "<<(yylineno)<<" Symbol "<<($1->place)<<" used without declaration."<<endl;
     exit(0);
@@ -932,6 +1022,7 @@ local_variable_declaration
     }
     $$=new Attr();
     if($1->isarray == false){
+	string typ1=($1->type);
 	for(int i=0;i<(int)($2->var_dec).size();i++){
 	  Attr * CurVar = ($2->var_dec)[i];
 	  // TODO:insert CurVar->place into table-> DONE!
@@ -939,16 +1030,31 @@ local_variable_declaration
 	  string code_=($1->type)+","+(CurVar->place);
 	  ($$->code).pb(code_);
 	  if(CurVar->init != NULL){
+
 	    Attr * CurVarInit=(CurVar->init);
 	    Combine($$->code,$$->code,CurVarInit->code);
 	    string code_=getTAC(2,"=",CurVar->place, CurVarInit->place);
 	    ($$->code).pb(code_);
+
+	    // check declartion of initializer
+	    if(!(CurTable->lookup(CurVarInit->place))){
+	      cerr<<"ERROR: Line: "<<(yylineno)<<" "<<(CurVarInit->place)<<" used without declaration."<<endl;
+	      exit(0);
+	    }
+	    // check type compatibility
+	    string typ2=getTyp(CurVarInit->place);
+	    if(typ1 != typ2){
+	      cerr<<"ERROR: Line: "<<(yylineno)<<" "<<(CurVarInit->place)<<" has type "<<typ2<<". Expected type "<<typ1<<endl;
+	      exit(0);
+	    }
+
 	  }
 	}
-    }else{
+     }else{
        for(int i=0;i<(int)($2->var_dec).size();i++){
 	  Attr * CurVar = ($2->var_dec)[i];
 	  if(CurVar->init != NULL){
+	    string typ1=($1->elem)->type;
 	    Attr * CurVarInit=(CurVar->init);
 	    int ArrayLength=(CurVarInit->init_list).size();
 	    CurTable->insertArray(($1->elem)->type, CurVar->place);
@@ -961,6 +1067,20 @@ local_variable_declaration
 	      code_="update,"+(CurVarInitElem->place)+","+(CurVar->place)+","+to_string(ElemWidth*j);
 	      Combine($$->code,$$->code,CurVarInitElem->code);
 	      ($$->code).pb(code_);
+
+	      // check declartion of initializer
+	      if(!(CurTable->lookup(CurVarInitElem->place))){
+		cerr<<"ERROR: Line: "<<(yylineno)<<" "<<(CurVarInitElem->place)<<" used without declaration."<<endl;
+		exit(0);
+	      }
+
+	      // check type compatibility
+	      string typ2=getTyp(CurVarInitElem->place);
+	      if(typ1 != typ2){
+		cerr<<"ERROR: Line: "<<(yylineno)<<" "<<(CurVarInitElem->place)<<" has type "<<typ2<<". Expected type "<<typ1<<endl;
+		exit(0);
+	      }
+
 	    }
 	  }else{
 	    // default length 100 size array
@@ -969,7 +1089,7 @@ local_variable_declaration
 	    ($$->code).pb(code_);
 	  }
 	}
-     }
+    }
     /*
      *for(auto it : ($$->code))
      *  cout<<it<<endl;

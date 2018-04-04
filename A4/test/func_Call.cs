@@ -9,6 +9,8 @@ class test3{
 		int a,b,c;
 		char p='q';
 		int d = Funccall(a,b,c,5);
+		//int d = Funccall(a,lol,c,5);
+		//int d = Funccall(a,p,c,5);
 	}
 }
 
