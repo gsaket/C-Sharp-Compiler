@@ -130,6 +130,8 @@ RankSpecifier         "["{WhiteSpace}*"]"
 "virtual"    { yylval.sval=strdup(yytext);return VIRTUAL;}
 "void"       { yylval.sval=strdup(yytext);return VOID;}
 "while"      { yylval.sval=strdup(yytext);return WHILE;}
+"Writeline"  { yylval.sval=strdup(yytext);return WRITELINE; }
+"Readline"  { yylval.sval=strdup(yytext);return READLINE; }
 
 
 {Identifier}          { yylval.sval=strdup(yytext);return IDENTIFIER; }

@@ -33,6 +33,11 @@ struct Attr{
     // invocation
     vector<Attr*> arg_lst;
 
+    // Array access
+    bool array_element;
+    string array_name;
+    string array_off;
+
     //TODO need to handle array type
     /*
      *Attr(string name, bool basic, bool array, bool pointer, int width, int length):name(name), basic(basic), array(array),\
@@ -45,6 +50,7 @@ struct Attr{
         sw_default=false;
         sw_lbl=NULL;
         ret_typ="void";
+        array_element=false;
     }
 };
 
@@ -58,6 +64,7 @@ public :
     map<string, pair<string,string> > Node;
     // For function, we store {arg_num, arg_types}
     map<string, pair<int ,vector<string> > > Args;
+    set<string> shadow;
     int width;
     int temp_count;
 
@@ -88,6 +95,15 @@ public :
         Node[id]=Temp;
     }
 
+    void insertLiteral(string typ, string id){
+        pair<string,string> Temp;
+        Temp.X = typ;
+        Temp.Y = "literal";
+        Node[id]=Temp;
+    }
+
+
+
     void insertFunc(string id, string ret_typ, vector<string> par_typs, int par_num){
         pair<string,string> Temp;
         Temp.X = ret_typ; // remember it is return type for function
@@ -112,6 +128,13 @@ public :
         insertTemp(typ,temp);
         return temp;
     }
+    bool lookup_in_this(string s){
+        if(Node.find(s) != Node.end()){
+            return true;
+        }
+        return false;
+    }
+
 
     bool lookup(string s){
         if(Node.find(s) != Node.end()){
@@ -121,5 +144,12 @@ public :
             return false;
         }
         return parent->lookup(s);
+    }
+
+    bool look_in_shadow(string s){
+        if(shadow.find(s) != shadow.end()){
+            return true;
+        }
+        return false;
     }
 };

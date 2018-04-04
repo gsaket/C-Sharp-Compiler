@@ -10,10 +10,11 @@ class test3{
 		int i=6;
 		for (;i<= 8 && i>= 6 && i!= 7; ++i){
 			if (i>=0){
-				Console.WriteLine("yes\n");
+				//Console.WriteLine("yes\n");
+				;
 			}
-			else 
-			Console.WriteLine("no\n");
+			else {;}
+			//Console.WriteLine("no\n");
 		}
 
 	}
