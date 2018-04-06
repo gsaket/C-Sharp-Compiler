@@ -1,18 +1,16 @@
-namespace HelloWorld
+class Hello 
 {
-	class Hello 
+	int Main() 
 	{
-		int Main() 
-		{
-			int i = 6;
-			for (;i<= 8 && i 6 && i != 7; i++){
-				if (i >= 0){
-					a = "yes\n";
-				}
-				else 
-					a = "no\n";
+		int i = 6;
+		string a;
+		for (;i<= 8 && i > 6 && i != 7; ++i){
+			if (i >= 0){
+				a = "yes\n";
 			}
-			return 0;
+			else 
+				a = "no\n";
 		}
+		return 0;
 	}
 }

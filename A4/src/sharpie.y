@@ -73,17 +73,17 @@ string getLabel(){
   return "L"+to_string(CurLabel);
 }
 
-
-string getTyp(string s){
-  SymTable* DeclTbl=getDeclScope(s, CurTable);
-  return (DeclTbl->Node)[s].X;
-}
-
 string getCat(string s){
   SymTable* DeclTbl=getDeclScope(s, CurTable);
   return (DeclTbl->Node)[s].Y;
 }
 
+
+
+string getTyp(string s){
+  SymTable* DeclTbl=getDeclScope(s, CurTable);
+  return (DeclTbl->Node)[s].X;
+}
 
 
 bool CheckTyp(Attr* a, Attr* b, string typ){
@@ -96,12 +96,12 @@ bool CheckTyp(Attr* a, Attr* b, string typ){
       }
       return true;
     }
-    if(typ1 != "int"){
-      cerr<<"ERROR: Line: "<<(yylineno)<<" Symbol "<<(a->place)<<" is of type "<<typ1<<". Expected type: int"<<endl;
+    if(typ1 != typ){
+      cerr<<"ERROR: Line: "<<(yylineno)<<" Symbol "<<(a->place)<<" is of type "<<typ1<<". Expected type: "<<typ<<endl;
       exit(0);
     }
-    if(typ2 != "int"){
-      cerr<<"ERROR: Line: "<<(yylineno)<<" Symbol "<<(b->place)<<" is of type "<<typ2<<". Expected type: int"<<endl;
+    if(typ2 != typ){
+      cerr<<"ERROR: Line: "<<(yylineno)<<" Symbol "<<(b->place)<<" is of type "<<typ2<<". Expected type: "<<typ<<endl;
       exit(0);
     }
     return true;
@@ -346,7 +346,11 @@ integral_type
   ;
 class_type
   : OBJECT
-  | STRING_TYPE
+  | STRING_TYPE {
+    $$=new Attr();
+    $$->type="string";
+    $$->width=400;
+  }
   ;
 array_type
   : array_type rank_specifier
@@ -480,7 +484,7 @@ invocation_expression
       string RetType=(DeclTbl->Node)[FunName].X;
       string tp="NULL";
       if(RetType != "void"){
-	tp=DeclTbl->getTemp(RetType);
+	tp=CurTable->getTemp(RetType);
 	($$->place)=tp;
       }
       code_="call,"+FunName+","+to_string(arg_cnt)+","+tp;
@@ -606,6 +610,11 @@ pre_increment_expression
     $$=$2;
     string code_="+,"+($2->place)+",1,"+($2->place);
     ($$->code).pb(code_);
+    if($2->array_element == true){
+      // update the array
+      code_="update,"+($2->place)+","+($2->array_name)+","+($2->array_off);
+      ($$->code).pb(code_);
+    }
     if(!(CurTable->lookup($2->place))){
       cerr<<"ERROR: Line: "<<(yylineno)<<($2->place)<<" used without declaration."<<endl;
       exit(0);
@@ -617,6 +626,11 @@ pre_decrement_expression
     $$=$2;
     string code_="-,"+($2->place)+","+($2->place)+",1";
     ($$->code).pb(code_);
+     if($2->array_element == true){
+      // update the array
+      code_="update,"+($2->place)+","+($2->array_name)+","+($2->array_off);
+      ($$->code).pb(code_);
+    }
     if(!(CurTable->lookup($2->place))){
       cerr<<"ERROR: Line: "<<(yylineno)<<($2->place)<<" used without declaration."<<endl;
       exit(0);
@@ -1227,7 +1241,9 @@ switch_statement
       Combine($$->code, $$->code, sec->code);
     }
     code_="goto,"+lnext;
-    ($$->code).pb(code_);
+    int si=(int)($$->code).size();
+    if(($$->code)[si-1] != "goto,-1")
+      ($$->code).pb(code_);
     code_="label,"+ltest;
     ($$->code).pb(code_);
     for(int i=0;i<(int)($5->sw_sec).size();i++){
