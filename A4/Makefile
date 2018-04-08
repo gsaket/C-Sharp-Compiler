@@ -11,5 +11,4 @@ build/lex.yy.c: src/sharpie.l build/sharpie.tab.h
 	mv lex.yy.c build
 
 clean:
-	rm build/*.tab.c bin/sharpie build/*.yy.c build/*.tab.h bin/gen_html html/* build/*.raw
-
+	rm build/*.tab.c bin/sharpie build/*.yy.c build/*.tab.h

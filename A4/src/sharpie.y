@@ -34,13 +34,33 @@ int NumScopes;
 vector<pair<string,string> > par_var;
 bool FLAG;
 
+string change_string(string s)
+{
+  /*return s;*/
+  int len = s.length();
+  string ret = "";
+  int idx = len;
+  for(int i = len-1; i >= 0; i--)
+  {
+    if(s[i]=='_')
+    {
+      idx = i;
+    }
+  }
+  for(int i = 0; i < idx; i++)
+    ret+=s[i];
+  return ret;
+}
+
 void Combine(vector<string> &a, vector<string> b, vector<string> c){
   b.insert(b.end(),c.begin(),c.end());
   a=b;
 }
 
 void BeginScope(){
+  /*cout<<"HELLO"<<endl;*/
   SymTable* newTable = new SymTable();
+  newTable->table_id=NumScopes;
   (CurTable->children).pb(newTable);
   newTable->parent = CurTable;
   CurTable = newTable;
@@ -49,6 +69,7 @@ void BeginScope(){
     for(int i=0;i<(int)(par_var).size();i++){
       CurTable->insertVariable(par_var[i].X, par_var[i].Y);
     }
+    /*cout<<" params: in "<<(CurTable->table_id)<<endl;*/
     FLAG=false;
   }
   par_var.clear();
@@ -87,8 +108,8 @@ string getTyp(string s){
 
 
 bool CheckTyp(Attr* a, Attr* b, string typ){
-    string typ1=getTyp(a->place);
-    string typ2=getTyp(b->place);
+    string typ1=getTyp(change_string(a->place));
+    string typ2=getTyp(change_string(b->place));
     if(typ == "null"){
       if(typ1 != typ2){
 	cerr<<"ERROR: Line: "<<(yylineno)<<" Symbols "<<(a->place)<<" and "<<(b->place)<<" are of type "<<typ1<<" and "<<typ2<<". They can't be compared!"<<endl;
@@ -116,12 +137,14 @@ string getTAC(int flag, string OP, string dest, string op1, string op2="NONE"){
   }
 }
 
+
+
 void translate(Attr* &p, Attr* q, Attr* r, string OP, string ret_typ="int"){
-    if(!(CurTable->lookup(q->place))){
+    if(!(CurTable->lookup(change_string(q->place)))){
       cerr<<"ERROR: Line: "<<(yylineno)<<(q->place)<<" used without declaration."<<endl;
       exit(0);
     }
-    if(!(CurTable->lookup(r->place))){
+    if(!(CurTable->lookup(change_string(r->place)))){
       cerr<<"ERROR: Line: "<<(yylineno)<<(r->place)<<" used without declaration."<<endl;
       exit(0);
     }
@@ -464,17 +487,17 @@ invocation_expression
       }
       for(int i=0;i<arg_cnt;i++){
 	Attr* CurArg=($3->arg_lst)[i];
-	code_="param,"+(CurArg->place);
+	code_="param,"+(CurArg->place)+","+to_string(i+1);
 	($$->code).pb(code_);
 
 	// check declartion of initializer
-	if(!(CurTable->lookup(CurArg->place))){
+	if(!(CurTable->lookup(change_string(CurArg->place)))){
 	  cerr<<"ERROR: Line: "<<(yylineno)<<" "<<(CurArg->place)<<" used without declaration."<<endl;
 	  exit(0);
 	}
 	// check type compatibility
 	string typ1=((DeclTbl->Args)[FunName].Y)[i];
-	string typ2=getTyp(CurArg->place);
+	string typ2=getTyp(change_string(CurArg->place));
 	if(typ1 != typ2){
 	  cerr<<"ERROR: Line: "<<(yylineno)<<" "<<(CurArg->place)<<" has type "<<typ2<<". Expected type "<<typ1<<endl;
 	  exit(0);
@@ -503,19 +526,19 @@ element_access
   : primary_expression LEFT_BRACKET expression_list RIGHT_BRACKET
   | qualified_identifier LEFT_BRACKET expression_list RIGHT_BRACKET {
     $$=new Attr();
-    if(!(CurTable->lookup(($1->place)))){
+    if(!(CurTable->lookup(change_string($1->place)))){
       cerr<<"ERROR: Line: "<<(yylineno)<<" Array "<<($1->place)<<" used without declaration."<<endl;
       exit(0);
     }
-    SymTable* DeclTbl=getDeclScope(($1->place), CurTable);
-    if((DeclTbl->Node)[($1->place)].Y != "array"){
+    SymTable* DeclTbl=getDeclScope(change_string($1->place), CurTable);
+    if((DeclTbl->Node)[change_string($1->place)].Y != "array"){
       cerr<<"ERROR: Line: "<<(yylineno)<<($1->place)<<" Ain't no array!"<<endl;
       exit(0);
     }
     Combine($$->code, $$->code, $3->code);
     string tp1=CurTable->getTemp("int");
     string tp2=CurTable->getTemp("int");
-    string required_type=(DeclTbl->Node)[($1->place)].X;
+    string required_type=(DeclTbl->Node)[change_string($1->place)].X;
     string tp3=CurTable->getTemp(required_type);
     string wid="1";
     if(required_type == "int")wid="4";
@@ -589,7 +612,7 @@ unary_expression_not_plusminus
     $$=$2;
     string code_="!,"+($2->place);
     ($$->code).pb(code_);
-    if(!(CurTable->lookup($2->place))){
+    if(!(CurTable->lookup(change_string($2->place)))){
       cerr<<"ERROR: Line: "<<(yylineno)<<($2->place)<<" used without declaration."<<endl;
       exit(0);
     }
@@ -598,7 +621,7 @@ unary_expression_not_plusminus
     $$=$2;
     string code_="~,"+($2->place);
     ($$->code).pb(code_);
-    if(!(CurTable->lookup($2->place))){
+    if(!(CurTable->lookup(change_string($2->place)))){
       cerr<<"ERROR: Line: "<<(yylineno)<<($2->place)<<" used without declaration."<<endl;
       exit(0);
     }
@@ -615,7 +638,7 @@ pre_increment_expression
       code_="update,"+($2->place)+","+($2->array_name)+","+($2->array_off);
       ($$->code).pb(code_);
     }
-    if(!(CurTable->lookup($2->place))){
+    if(!(CurTable->lookup(change_string($2->place)))){
       cerr<<"ERROR: Line: "<<(yylineno)<<($2->place)<<" used without declaration."<<endl;
       exit(0);
     }
@@ -631,7 +654,7 @@ pre_decrement_expression
       code_="update,"+($2->place)+","+($2->array_name)+","+($2->array_off);
       ($$->code).pb(code_);
     }
-    if(!(CurTable->lookup($2->place))){
+    if(!(CurTable->lookup(change_string($2->place)))){
       cerr<<"ERROR: Line: "<<(yylineno)<<($2->place)<<" used without declaration."<<endl;
       exit(0);
     }
@@ -650,7 +673,7 @@ unary_expression
     string code_="-,"+tp+",0,"+($2->place);
     ($$->code).pb(code_);
     ($$->place)=tp;
-    if(!(CurTable->lookup($2->place))){
+    if(!(CurTable->lookup(change_string($2->place)))){
       cerr<<"ERROR: Line: "<<(yylineno)<<($2->place)<<" used without declaration."<<endl;
       exit(0);
     }
@@ -823,10 +846,11 @@ conditional_expression
   ;
 assignment
 : unary_expression assignment_operator expression {
+  /*cout<<"In assignment"<<endl;*/
   // TODO: handle others later
   $$=new Attr();
   // Left side shouldn't be a literal
-  if(CurTable->lookup($1->place) && CurTable->lookup($3->place)){
+  if(CurTable->lookup(change_string($1->place)) && CurTable->lookup(change_string($3->place))){
     string typ1;
     string cat1;
     string a1;
@@ -841,15 +865,15 @@ assignment
       ($1->code)[lcode-1]=code_;
       Combine($$->code, $3->code, $1->code);
     }else{
-      typ1=getTyp(($1->place));
-      cat1=getCat(($1->place));
+      typ1=getTyp(change_string($1->place));
+      cat1=getCat(change_string($1->place));
       a1=($1->place);
       $$->place = $1->place;
       Combine($$->code, $3->code, $1->code);
       string code_= getTAC(2,"=",$1->place,$3->place);
       ($$->code).pb(code_);
     }
-    string typ2=getTyp(($3->place));
+    string typ2=getTyp(change_string($3->place));
     if(typ1 != typ2){
 	cerr<<"ERROR: Line: "<<(yylineno)<<" Symbols "<<(a1)<<" and "<<($3->place)<<" are of type "<<typ1<<" and "<<typ2<<". Assignment not possible."<<endl;
 	exit(0);
@@ -859,10 +883,10 @@ assignment
 	exit(0);
     }
 
-  }else if(!(CurTable->lookup($1->place))){
+  }else if(!(CurTable->lookup(change_string($1->place)))){
     cerr<<"ERROR: Line: "<<(yylineno)<<" Symbol "<<($1->place)<<" used without declaration."<<endl;
     exit(0);
-  }else if(!(CurTable->lookup($3->place))){
+  }else if(!(CurTable->lookup(change_string($3->place)))){
     cerr<<"ERROR: Line: "<<(yylineno)<<" Symbol "<<($3->place)<<" used without declaration."<<endl;
     exit(0);
   }
@@ -928,12 +952,12 @@ print_statement
   : WRITELINE '(' argument ')' ';' {
     $$=new Attr();
     Combine($$->code, $$->code, $3->code);
-    if(!(CurTable->lookup($3->place))){
+    if(!(CurTable->lookup(change_string($3->place)))){
 	cerr<<"ERROR: Line: "<<(yylineno)<<" Symbol "<<($3->place)<<" is not declared"<<endl;
 	exit(0);
     }
-    SymTable* DeclTbl=getDeclScope(($3->place), CurTable);
-    string typ=(DeclTbl->Node)[($3->place)].X;
+    SymTable* DeclTbl=getDeclScope(change_string($3->place), CurTable);
+    string typ=(DeclTbl->Node)[change_string($3->place)].X;
     // print, var, type
     string code_="print,"+($3->place)+","+typ;
     ($$->code).pb(code_);
@@ -943,12 +967,12 @@ read_statement
   : READLINE '(' argument ')' ';' {
     $$=new Attr();
     Combine($$->code, $$->code, $3->code);
-    if(!(CurTable->lookup($3->place))){
+    if(!(CurTable->lookup(change_string($3->place)))){
 	cerr<<"ERROR: Line: "<<(yylineno)<<" Symbol "<<($3->place)<<" is not declared"<<endl;
 	exit(0);
     }
-    SymTable* DeclTbl=getDeclScope(($3->place), CurTable);
-    string typ=(DeclTbl->Node)[($3->place)].X;
+    SymTable* DeclTbl=getDeclScope(change_string($3->place), CurTable);
+    string typ=(DeclTbl->Node)[change_string($3->place)].X;
     // read, var, type
     string code_="read,"+($3->place)+","+typ;
     ($$->code).pb(code_);
@@ -1024,15 +1048,17 @@ local_variable_declaration
     // Checking Re-declaration
     for(int i=0;i<(int)($2->var_dec).size();i++){
       Attr* CurVar=($2->var_dec)[i];
-      if((CurTable->lookup_in_this(CurVar->place))){
+      if((CurTable->lookup_in_this(change_string(CurVar->place)))){
 	cerr<<"ERROR: Line: "<<(yylineno)<<" Symbol "<<(CurVar->place)<<" is already declared in this scope."<<endl;
 	exit(0);
       }
-      if((CurTable->lookup(CurVar->place))){
-	// declared in outer scope
-	(CurTable->shadow).insert(CurVar->place);
-	(CurVar->place)=(CurVar->place)+"_"+to_string(NumScopes);
-      }
+      /*
+       *if((CurTable->lookup(CurVar->place))){
+       *  // declared in outer scope
+       *  (CurTable->shadow).insert(CurVar->place);
+       *  (CurVar->place)=(CurVar->place)+"_"+to_string(NumScopes);
+       *}
+       */
     }
     $$=new Attr();
     if($1->isarray == false){
@@ -1040,7 +1066,9 @@ local_variable_declaration
 	for(int i=0;i<(int)($2->var_dec).size();i++){
 	  Attr * CurVar = ($2->var_dec)[i];
 	  // TODO:insert CurVar->place into table-> DONE!
+	  CurVar->place=change_string((CurVar->place));
 	  CurTable->insertVariable(($1->type), CurVar->place);
+	  CurVar->place+="_"+to_string((CurTable->table_id));
 	  string code_=($1->type)+","+(CurVar->place);
 	  ($$->code).pb(code_);
 	  if(CurVar->init != NULL){
@@ -1051,12 +1079,12 @@ local_variable_declaration
 	    ($$->code).pb(code_);
 
 	    // check declartion of initializer
-	    if(!(CurTable->lookup(CurVarInit->place))){
+	    if(!(CurTable->lookup(change_string(CurVarInit->place)))){
 	      cerr<<"ERROR: Line: "<<(yylineno)<<" "<<(CurVarInit->place)<<" used without declaration."<<endl;
 	      exit(0);
 	    }
 	    // check type compatibility
-	    string typ2=getTyp(CurVarInit->place);
+	    string typ2=getTyp(change_string(CurVarInit->place));
 	    if(typ1 != typ2){
 	      cerr<<"ERROR: Line: "<<(yylineno)<<" "<<(CurVarInit->place)<<" has type "<<typ2<<". Expected type "<<typ1<<endl;
 	      exit(0);
@@ -1083,13 +1111,13 @@ local_variable_declaration
 	      ($$->code).pb(code_);
 
 	      // check declartion of initializer
-	      if(!(CurTable->lookup(CurVarInitElem->place))){
+	      if(!(CurTable->lookup(change_string(CurVarInitElem->place)))){
 		cerr<<"ERROR: Line: "<<(yylineno)<<" "<<(CurVarInitElem->place)<<" used without declaration."<<endl;
 		exit(0);
 	      }
 
 	      // check type compatibility
-	      string typ2=getTyp(CurVarInitElem->place);
+	      string typ2=getTyp(change_string(CurVarInitElem->place));
 	      if(typ1 != typ2){
 		cerr<<"ERROR: Line: "<<(yylineno)<<" "<<(CurVarInitElem->place)<<" has type "<<typ2<<". Expected type "<<typ1<<endl;
 		exit(0);
@@ -1125,8 +1153,14 @@ variable_declarator
   : IDENTIFIER {
     $$=new Attr();
     $$->place = string($1);
-    if(CurTable->look_in_shadow($$->place)){
-      ($$->place)=($$->place)+"_"+to_string(NumScopes);
+    /*
+     *if(CurTable->look_in_shadow($$->place)){
+     *  ($$->place)=($$->place)+"_"+to_string(NumScopes);
+     *}
+     */
+    if(CurTable->lookup(change_string($$->place))){
+      SymTable* DeclTbl= getDeclScope(change_string($$->place),CurTable);
+      ($$->place)+="_"+to_string(DeclTbl->table_id);
     }
     $$->init = NULL;
     $$->line=yylineno;
@@ -1134,10 +1168,16 @@ variable_declarator
   | IDENTIFIER '=' variable_initializer {
     $$=new Attr();
     $$->place = string($1);
-    if(CurTable->look_in_shadow($$->place)){
-      ($$->place)=($$->place)+"_"+to_string(NumScopes);
+/*
+ *    if(CurTable->look_in_shadow($$->place)){
+ *      ($$->place)=($$->place)+"_"+to_string(NumScopes);
+ *    }
+ *
+ */
+    if(CurTable->lookup(change_string($$->place))){
+      SymTable* DeclTbl= getDeclScope(change_string($$->place),CurTable);
+      ($$->place)+="_"+to_string(DeclTbl->table_id);
     }
-
     $$->init = $3;
     $$->line=yylineno;
   }
@@ -1225,7 +1265,7 @@ if_statement
 switch_statement
   : SWITCH '(' expression ')' switch_block {
     // refer slides for naming convention
-    cout<<"----$$$$$$$$$$"<<endl;
+    /*cout<<"----$$$$$$$$$$"<<endl;*/
     string ltest=getLabel();
     string lnext=getLabel();
     $$=new Attr();
@@ -1265,11 +1305,13 @@ switch_statement
       }
     }
 
-    cout<<"st$$$$$$$$$$"<<endl;
-    for(int i=0;i<(int)($$->code).size();i++){
-      cout<<($$->code)[i]<<endl;
-    }
-    cout<<"ed$$$$$$$$$$"<<endl;
+    /*
+     *cout<<"st$$$$$$$$$$"<<endl;
+     *for(int i=0;i<(int)($$->code).size();i++){
+     *  cout<<($$->code)[i]<<endl;
+     *}
+     *cout<<"ed$$$$$$$$$$"<<endl;
+     */
   }
   ;
 switch_block
@@ -1359,11 +1401,13 @@ while_statement
       }
     }
 
-    cout<<"-----^^^^^^^^^"<<endl;
-    for(int i=0;i<(int)($$->code).size();i++){
-      cout<<($$->code)[i]<<endl;
-    }
-    cout<<"^^^^^^^^^^^"<<endl;
+    /*
+     *cout<<"-----^^^^^^^^^"<<endl;
+     *for(int i=0;i<(int)($$->code).size();i++){
+     *  cout<<($$->code)[i]<<endl;
+     *}
+     *cout<<"^^^^^^^^^^^"<<endl;
+     */
   }
   ;
 do_statement
@@ -1400,11 +1444,13 @@ for_statement
 	($$->code)[i]="goto,"+lbegin;
       }
     }
-    cout<<"st/////////"<<endl;
-    for(int i=0;i<(int)($$->code).size();i++){
-      cout<<($$->code)[i]<<endl;
-    }
-    cout<<"ed/////////"<<endl;
+    /*
+     *cout<<"st/////////"<<endl;
+     *for(int i=0;i<(int)($$->code).size();i++){
+     *  cout<<($$->code)[i]<<endl;
+     *}
+     *cout<<"ed/////////"<<endl;
+     */
   }
   ;
 for_initializer_opt
@@ -1513,8 +1559,10 @@ compilation_unit
   | using_directives_opt namespace_member_declarations {
     $$=$2;
     cout<<"------CODE-----"<<endl;
+    cout<<"0,call,Main,0,NULL"<<endl;
+    cout<<"1,exit"<<endl;
     for(int i=0;i<(int)($$->code).size();i++){
-      cout<<($$->code)[i]<<endl;
+      cout<<(i+2)<<","<<($$->code)[i]<<endl;
     }
     cout<<"------END--CODE-----"<<endl;
   }
@@ -1552,9 +1600,17 @@ qualified_identifier
   : IDENTIFIER {
 	$$ = new Attr();
 	$$->place = string($1);
-	if(CurTable->look_in_shadow($$->place)){
-	  ($$->place)=($$->place)+"_"+to_string(NumScopes);
-	}
+/*
+ *        if(CurTable->look_in_shadow($$->place)){
+ *          ($$->place)=($$->place)+"_"+to_string(NumScopes);
+ *        }
+ *
+ */
+    if(CurTable->lookup(change_string($$->place))){
+      SymTable* DeclTbl= getDeclScope(change_string($$->place),CurTable);
+      if((DeclTbl->Node)[change_string($$->place)].Y == "variable")
+	($$->place)+="_"+to_string(DeclTbl->table_id);
+    }
 
   }
   | qualifier IDENTIFIER{
@@ -1662,8 +1718,9 @@ interface_type_list
   | interface_type_list COMMA type_name
   ;
 class_body
-  : '{' class_member_declarations_opt '}' {
-     $$=$2;
+  : '{' begin_scope class_member_declarations_opt '}' {
+     $$=$3;
+     EndScope();
   }
   ;
 class_member_declarations_opt
@@ -1708,22 +1765,26 @@ field_declaration
     // Checking Re-declaration
     for(int i=0;i<(int)($3->var_dec).size();i++){
       Attr* CurVar=($3->var_dec)[i];
-      if((CurTable->lookup_in_this(CurVar->place))){
+      if((CurTable->lookup_in_this(change_string(CurVar->place)))){
 	cerr<<"ERROR: Line: "<<(yylineno)<<" Symbol "<<(CurVar->place)<<" is already declared in this scope."<<endl;
 	exit(0);
       }
-      if((CurTable->lookup(CurVar->place))){
-	// declared in outer scope
-	(CurTable->shadow).insert(CurVar->place);
-	(CurVar->place)=(CurVar->place)+"_"+to_string(NumScopes);
-      }
+      /*
+       *if((CurTable->lookup(CurVar->place))){
+       *  // declared in outer scope
+       *  (CurTable->shadow).insert(CurVar->place);
+       *  (CurVar->place)=(CurVar->place)+"_"+to_string(NumScopes);
+       *}
+       */
     }
     $$=new Attr();
     if($2->isarray == false){
 	for(int i=0;i<(int)($3->var_dec).size();i++){
 	  Attr * CurVar = ($3->var_dec)[i];
 	  // TODO:insert CurVar->place into table-> DONE!
+	  CurVar->place=change_string((CurVar->place));
 	  CurTable->insertVariable(($2->type), CurVar->place);
+	  CurVar->place+="_"+to_string(CurTable->table_id);
 	  string code_=($2->type)+","+(CurVar->place);
 	  ($$->code).pb(code_);
 	  if(CurVar->init != NULL){
@@ -1776,11 +1837,18 @@ method_declaration
       string code_="function,"+method_name;
       ($$->code).pb(code_);
       int par_cnt=(int)($1->par_lst).size();
+      int off=8;
       for(int i=par_cnt-1;i>=0;i--){
-	code_="pop,"+((($1->par_lst)[i])->place);
+	// pop, var, offset
+	code_="pop,"+((($1->par_lst)[i])->place)+","+to_string(off);
+	off+=4;
 	($$->code).pb(code_);
       }
       Combine($$->code, $$->code, $2->code);
+      if($1->ret_typ == "void"){
+	code_="return,NULL";
+	($$->code).pb(code_);
+      }
   }
   ;
 method_header
@@ -1803,24 +1871,37 @@ method_header
     for(int i=0;i<par_cnt;i++){
       string typ=(($5->par_lst)[i])->type;
       string plc=(($5->par_lst)[i])->place;
+      (($5->par_lst)[i])->place+="_"+to_string(NumScopes);
       par_typs.pb(typ);
       par_var.pb(mp(typ, plc));
     }
     CurTable->insertFunc($$->place, $$->ret_typ, par_typs, par_cnt);
   }
   | modifiers_opt VOID qualified_identifier '(' formal_parameter_list_opt ')' {
-    $$=new Attr();
+     $$=new Attr();
     ($$->code)=($5->code);
     ($$->par_lst)=($5->par_lst);
-
     ($$->place)=($3->place);
     ($$->ret_typ)="void";
+    /*
+     *for(int i=0;i<(int)($$->par_lst).size();i++){
+     *  cout<<(($$->par_lst)[i]->place)<<endl;
+     *}
+     *cout<<"++++"<<endl;
+     */
     int par_cnt=(int)($5->par_lst).size();
     vector<string> par_typs;
+    // delaying variable insertion in scope
+    FLAG=true;
     for(int i=0;i<par_cnt;i++){
-      par_typs.pb((($5->par_lst)[i])->type);
+      string typ=(($5->par_lst)[i])->type;
+      string plc=(($5->par_lst)[i])->place;
+      (($5->par_lst)[i])->place+="_"+to_string(NumScopes);
+      par_typs.pb(typ);
+      par_var.pb(mp(typ, plc));
     }
-    CurTable->insertFunc($$->place, $$->ret_typ, par_typs, par_cnt);  }
+    CurTable->insertFunc($$->place, $$->ret_typ, par_typs, par_cnt);
+  }
   ;
 formal_parameter_list_opt
   : eps {
@@ -1860,9 +1941,11 @@ fixed_parameter
   : parameter_modifier_opt type IDENTIFIER {
     $$=new Attr();
     ($$->place)=string($3);
-    if(CurTable->look_in_shadow($$->place)){
-      ($$->place)=($$->place)+"_"+to_string(NumScopes);
-    }
+    /*
+     *if(CurTable->look_in_shadow($$->place)){
+     *  ($$->place)=($$->place)+"_"+to_string(NumScopes);
+     *}
+     */
     // delaying this process till next scope
     /*CurTable->insertVariable(($2->type),($$->place));*/
     // TODO: insert array type
@@ -2192,36 +2275,6 @@ int main(int argc, char** argv) {
     do {
     	yyparse();
     } while (!feof(yyin));
-
-    int rules = (int)(R.size());
-    for(int r=rules-1;r>=0;r--){
-	cout<<R[r][0]<<" -> ";
-	for(int i=1;i<(int)(R[r].size()); i++){
-		cout<<R[r][i]<<" ";
-	}
-	cout<<" ;";
-	cout<<endl;
-    }
-
-
-
-/*
- *    FILE *myfile = fopen(argv[1], "r");
- *    if (!myfile) {
- *        cout << "Can't open the file!" << endl;
- *        return -1;
- *    }
- *    yyin = myfile;
- *
- *    getStrings();
- *    int x;
- *    while(1){
- *        x=yylex();
- *        if(x == 0)break;
- *        TknStats[x].push_back(strdup(yytext));
- *        FreqToken[x]++;
- *    }
- */
 }
 
 

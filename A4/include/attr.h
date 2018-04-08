@@ -67,6 +67,7 @@ public :
     set<string> shadow;
     int width;
     int temp_count;
+    int table_id;
 
     SymTable(SymTable* prev=NULL){
         parent=prev;

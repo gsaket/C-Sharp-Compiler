@@ -6,13 +6,13 @@ class test3{
 		int x=10;
 		int a=0;
 		int b=10;
+		int z=15;
 		{
-			int x;
-			x=a+10;
-			b=x*a;
+			int z=10;
+			z = z+1;
 			{
-				x=100;
-				int a=5;
+				int z=12;
+				z = z+2;
 			}
 		}
 	}

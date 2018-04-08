@@ -2,6 +2,7 @@ using System;
 class test3{
 	int Funccall(int a,int b,int c,int lol){
 		a  = a+1;
+		lol=lol+1;
 		return a;
 	}
 
