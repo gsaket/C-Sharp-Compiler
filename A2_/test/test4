@@ -1,0 +1,14 @@
+0,=,a,2
+1,+,b,a,4
+2,ifgoto,<=,b,7,6
+3,*,c,b,a
+4,ifgoto,<=,c,10,10
+5,goto,12
+6,ifgoto,>=,a,2,8
+7,goto,12
+8,print,a
+9,goto,12
+10,print,c
+11,goto,12
+12,exit
+

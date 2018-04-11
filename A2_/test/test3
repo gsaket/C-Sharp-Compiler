@@ -1,0 +1,5 @@
+0,=,x,2
+1,print,x
+2,read,x
+3,print,x
+4,exit
