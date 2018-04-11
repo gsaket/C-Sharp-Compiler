@@ -47,8 +47,12 @@ struct Attr{
     bool is_method_decl;
     vector<string> par_types;
 
+    // classes
      bool isQI;
      pair<string, string> QI;
+
+     // Access modifiers
+     string acc_mod;
 
     //TODO need to handle array type
     /*
@@ -87,6 +91,8 @@ public :
     int temp_count;
     int table_id;
     string CSname;
+    // class name, private flds/mtds
+    map<string, set<string> > prvt_lst;
 
     SymTable(SymTable* prev=NULL){
         parent=prev;
@@ -159,14 +165,15 @@ public :
         Smap[id]=tmap;
     }
 
-    void insertClass(string id, map<string,string> tmap, map<string,pair<string, vector<string> > > tmap1){
+    void insertClass(string id, map<string,string> tmap, map<string,pair<string, vector<string> > > tmap1, set<string> prvt_fld_mtd){
         pair<string,string> Temp;
         Temp.X = "null";
         Temp.Y = "class";
         Node[id]=Temp;
-        cout<<"YOL "<<id<<" si: "<<(int)(tmap.size())<<endl;
+        //cout<<"YOL "<<id<<" si: "<<(int)(tmap.size())<<endl;
         Smap[id]=tmap;
         Mtdmap[id]=tmap1;
+        prvt_lst[id]=prvt_fld_mtd;
     }
 
 

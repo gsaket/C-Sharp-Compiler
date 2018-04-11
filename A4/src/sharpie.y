@@ -485,6 +485,14 @@ invocation_expression
 	// TODO: check if this method is defined, parameter type
 	CurCSname = (DeclTbl->Node)[Objname].X;
 	DeclTbl=getDeclScope(CurCSname, CurTable);
+	if((DeclTbl->prvt_lst)[CurCSname].find(FunName) != (DeclTbl->prvt_lst)[CurCSname].end()){
+	  cerr<<"Error Line "<<yylineno<<": Function "<<FunName<<" is a private method!"<<endl;
+	  exit(0);
+	}
+	if(((DeclTbl->Mtdmap)[CurCSname]).find(FunName) == ((DeclTbl->Mtdmap)[CurCSname]).end()){
+	  cerr<<"Error Line "<<yylineno<<": Function "<<FunName<<" Not defined"<<endl;
+	  exit(0);
+	}
 	/*cout<<"Class Name: "<<CurCSname<<" SIZE: "<<(DeclTbl->Smap)[CurCSname].size()<<endl;*/
 	for(auto flds : (DeclTbl->Smap)[CurCSname]){
 	  string typ_ = (flds.Y);
@@ -500,6 +508,9 @@ invocation_expression
       }
       // Already looked up
       DeclTbl=getDeclScope(FunName,CurTable);
+      if(isQI){
+	DeclTbl=getDeclScope(CurCSname, CurTable);
+      }
       int arg_cnt=(int)($3->arg_lst).size();
       if(!isQI && (DeclTbl->Node)[FunName].Y != "function"){
 	cerr<<"Error Line "<<yylineno<<": "<<($1->place)<<" Ain't No function!"<<endl;
@@ -508,6 +519,13 @@ invocation_expression
       if(!isQI && arg_cnt  != (DeclTbl->Args)[FunName].X){
 	cerr<<"Error Line "<<yylineno<<": "<<($1->place)<<" Number of arguments don't match"<<endl;
 	exit(0);
+      }
+      if(isQI){
+	int chk_arg_cnt=((((DeclTbl->Mtdmap)[CurCSname])[FunName]).Y).size();
+	if(arg_cnt != chk_arg_cnt){
+	  cerr<<"Error Line "<<yylineno<<": "<<FunName<<" Number of arguments don't match"<<endl;
+	  exit(0);
+	}
       }
       string code_;
       for(int i=0;i<arg_cnt;i++){
@@ -518,27 +536,33 @@ invocation_expression
 	Attr* CurArg=($3->arg_lst)[i];
 	code_="param,"+(CurArg->place)+","+to_string(i+1);
 	($$->code).pb(code_);
-
 	// check declartion of initializer
 	if(!(CurTable->lookup(change_string(CurArg->place)))){
 	  cerr<<"ERROR: Line: "<<(yylineno)<<" "<<(CurArg->place)<<" used without declaration."<<endl;
 	  exit(0);
 	}
 	// check type compatibility
-	string typ1=((DeclTbl->Args)[FunName].Y)[i];
+	string typ1;
 	string typ2=getTyp(change_string(CurArg->place));
+	if(!isQI){
+	  typ1=((DeclTbl->Args)[FunName].Y)[i];
+	}else{
+	  typ1=((((DeclTbl->Mtdmap)[CurCSname])[FunName]).Y)[i];
+	}
 	if(typ1 != typ2){
 	  cerr<<"ERROR: Line: "<<(yylineno)<<" "<<(CurArg->place)<<" has type "<<typ2<<". Expected type "<<typ1<<endl;
 	  exit(0);
 	}
 
       }
+
       string RetType="void";
       if(!isQI){
 	RetType=(DeclTbl->Node)[FunName].X;
       }else{
-	DeclTbl=getDeclScope(Objname, CurTable);
+	DeclTbl=getDeclScope(CurCSname, CurTable);
 	RetType=(DeclTbl->Mtdmap)[CurCSname][FunName].X;
+	/*cout<<"RTE : "<<RetType<<endl;*/
       }
       string tp="NULL";
       if(RetType != "void"){
@@ -1129,6 +1153,9 @@ local_variable_declaration
 	//           struct/class name, object name
 	(CurTable->insertObj($1->place, (CurVar->place)));
 	for(auto flds : (DeclTbl->Smap)[($1->place)]){
+	  if((DeclTbl->prvt_lst)[($1->place)].find(flds.X) != (DeclTbl->prvt_lst)[($1->place)].end()){
+	    continue;
+	  }
 	  string smtg = (CurVar->place)+"."+(flds.X);
 	  string typ_ = (flds.Y);
 	  (CurTable->insertVariable(typ_, smtg));
@@ -1763,19 +1790,42 @@ type_declaration
   ;
 
 modifiers_opt
-  : eps
-  | modifiers
+  : eps {
+    $$=$1;
+  }
+  | modifiers {
+    $$=$1;
+  }
   ;
 modifiers
-  : modifier
-  | modifiers modifier
+  : modifier {
+    $$=$1;
+  }
+  | modifiers modifier {
+    $$=$1;
+  }
   ;
 modifier
-  : ABSTRACT
-  | NEW
-  | PRIVATE
-  | PROTECTED
-  | PUBLIC
+  : ABSTRACT {
+    $$=new Attr();
+    ($$->place)="abstract";
+  }
+  | NEW {
+    $$=new Attr();
+    ($$->place)="new";
+  }
+  | PRIVATE {
+    $$=new Attr();
+    ($$->place)="private";
+  }
+  | PROTECTED {
+    $$=new Attr();
+    ($$->place)="protected";
+  }
+  | PUBLIC {
+    $$=new Attr();
+    ($$->place)="public";
+  }
   ;
 class_declaration
   : modifiers_opt CLASS class_name class_base_opt class_body comma_opt {
@@ -1783,6 +1833,7 @@ class_declaration
     /*$$=$5;*/
     //  field_name, type
     ($$->code)=($5->code);
+    set<string> prvt_fld_mtd;
     map<string,string> tmap;
     /*cout<<"SI: "<<(int)($5->fld_lst).size()<<endl;*/
     for(int i=0;i<(int)($5->fld_lst).size();i++){
@@ -1793,6 +1844,9 @@ class_declaration
 	Attr* CurFldElem = ((CurFld->fld).Y)[j];
 	// without "_"
 	tmap[(CurFldElem->place)]=typ;
+	if(CurFld->acc_mod == "private"){
+	  prvt_fld_mtd.insert((CurFldElem->place));
+	}
       }
     }
     // for methods
@@ -1806,8 +1860,12 @@ class_declaration
       mtd_arg.X = (CurMtd->ret_typ);
       mtd_arg.Y = (CurMtd->par_types);
       tmap1[(CurMtd->place)]=mtd_arg;
+      if(CurMtd->acc_mod == "private"){
+	prvt_fld_mtd.insert((CurMtd->place));
+      }
+      /*cout<<"METHOD: "<<(CurMtd->place)<<" RetType : "<<(CurMtd->ret_typ)<<endl;*/
     }
-    (CurTable->insertClass($3->place, tmap, tmap1));
+    (CurTable->insertClass($3->place, tmap, tmap1, prvt_fld_mtd));
   }
   ;
 class_name
@@ -1908,6 +1966,8 @@ field_declaration
     }
     $$=new Attr();
     $$->fld=mp($2->type, ($3->var_dec));
+    ($$->acc_mod)=($1->place);
+    /*cout<<"ACCESS: "<<($1->place)<<endl;*/
     if($2->isarray == false){
 	string typ1=($2->type);
 	for(int i=0;i<(int)($3->var_dec).size();i++){
@@ -1961,6 +2021,7 @@ method_declaration
       ($$->place)=method_name;
       ($$->ret_typ)=ret_typ;
       ($$->par_types)=($1->par_types);
+      ($$->acc_mod)=($1->acc_mod);
       string code_="function,"+method_name;
       ($$->code).pb(code_);
       int par_cnt=(int)($1->par_lst).size();
@@ -1975,6 +2036,18 @@ method_declaration
       if($1->ret_typ == "void"){
 	code_="return,NULL";
 	($$->code).pb(code_);
+      }else{
+	bool chk_ret=false;
+	for(int i=0;i<($$->code).size();i++){
+	  code_=($$->code)[i];
+	  if(code_.substr(0,6) == "return"){
+	    chk_ret=true;
+	  }
+	}
+	if(!chk_ret){
+	  cerr<<"ERROR: Line: "<<(yylineno)<<" No return statement found!"<<endl;
+	  exit(0);
+	}
       }
   }
   ;
@@ -1985,6 +2058,7 @@ method_header
     ($$->par_lst)=($5->par_lst);
     ($$->place)=($3->place);
     ($$->ret_typ)=($2->type);
+    ($$->acc_mod)=($1->place);
     /*
      *for(int i=0;i<(int)($$->par_lst).size();i++){
      *  cout<<(($$->par_lst)[i]->place)<<endl;
@@ -2004,6 +2078,7 @@ method_header
     }
     CurTable->insertFunc($$->place, $$->ret_typ, par_typs, par_cnt);
     ($$->par_types)=par_typs;
+    /*cout<<"ID: "<<($$->place)<<" PAR_SIZE: "<<(par_typs).size()<<endl;*/
   }
   | modifiers_opt VOID qualified_identifier '(' formal_parameter_list_opt ')' {
      $$=new Attr();
@@ -2011,6 +2086,7 @@ method_header
     ($$->par_lst)=($5->par_lst);
     ($$->place)=($3->place);
     ($$->ret_typ)="void";
+    ($$->acc_mod)=($1->place);
     /*
      *for(int i=0;i<(int)($$->par_lst).size();i++){
      *  cout<<(($$->par_lst)[i]->place)<<endl;
@@ -2029,6 +2105,7 @@ method_header
       par_var.pb(mp(typ, plc));
     }
     CurTable->insertFunc($$->place, $$->ret_typ, par_typs, par_cnt);
+    ($$->par_types)=par_typs;
   }
   ;
 formal_parameter_list_opt
@@ -2151,7 +2228,7 @@ struct_declaration
   : modifiers_opt STRUCT struct_name struct_interfaces_opt struct_body comma_opt{
     //  field_name, type
     map<string,string> tmap;
-    cout<<"SI: "<<(int)($5->fld_lst).size()<<endl;
+    /*cout<<"SI: "<<(int)($5->fld_lst).size()<<endl;*/
     for(int i=0;i<(int)($5->fld_lst).size();i++){
       Attr* CurFld = ($5->fld_lst)[i];
       string typ=(CurFld->fld).X;
@@ -2284,6 +2361,7 @@ begin_scope
 eps
     : /* Nothing*/ {
       $$=new Attr();
+      $$->place="";
     }
     ;
 
