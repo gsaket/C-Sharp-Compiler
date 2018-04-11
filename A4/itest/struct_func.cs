@@ -1,29 +1,38 @@
 using System;
-namespace HelloWorld
+
+class IAMROOT{
+	int hey;
+	void IDK(){
+		hey=hey+1;
+	}
+}
+class Hello 
 {
-	class Hello 
+	int uppar;
+	class T
 	{
-		struct T
-		{
-			char a;
-			int b;
-			char c;
-			short d;
-			char f;
-		};
-		void f (T x)
-		{
-			x.a = 'a';
-			x.b = 47114711;
-			x.c = 'c';
-			x.d = 1234;
-			x.f = '*';
-		}
-		void Main() 
-		{
-			T k;
-			f(k);
-			return 0;
-		}
+		char a;
+		int b;
+		//char c;
+		//short d;
+		//char f;
+	};
+	int neeche;
+	void f ()
+	{
+		T x = new T();
+		x.a = 'a';
+		x.b = 4711;
+		//x.c = 'c';
+		//x.d = 1234;
+		//x.f = '*';
+	}
+	void Main() 
+	{
+		T k=new T();
+		//f();
+		IAMROOT lol=new IAMROOT();
+		lol.hey = k.b*1000;
+		lol.IDK();
 	}
 }

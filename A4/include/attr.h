@@ -38,6 +38,18 @@ struct Attr{
     string array_name;
     string array_off;
 
+    // fields
+    // type, place
+    pair<string, vector<Attr*> > fld;
+    vector< Attr* > fld_lst;
+    vector< Attr* > mtd_lst;
+    bool is_field_decl;
+    bool is_method_decl;
+    vector<string> par_types;
+
+     bool isQI;
+     pair<string, string> QI;
+
     //TODO need to handle array type
     /*
      *Attr(string name, bool basic, bool array, bool pointer, int width, int length):name(name), basic(basic), array(array),\
@@ -51,6 +63,9 @@ struct Attr{
         sw_lbl=NULL;
         ret_typ="void";
         array_element=false;
+        isQI=false;
+        is_field_decl=false;
+        is_method_decl=false;
     }
 };
 
@@ -64,10 +79,14 @@ public :
     map<string, pair<string,string> > Node;
     // For function, we store {arg_num, arg_types}
     map<string, pair<int ,vector<string> > > Args;
+    // For structs
+    map<string, map<string,string> > Smap;
+    map<string, map<string,pair<string, vector<string> > > > Mtdmap;
     set<string> shadow;
     int width;
     int temp_count;
     int table_id;
+    string CSname;
 
     SymTable(SymTable* prev=NULL){
         parent=prev;
@@ -82,6 +101,20 @@ public :
         Node[id]=Temp;
     }
 
+    void insertField(string typ, string id){
+        pair<string,string> Temp;
+        Temp.X = typ;
+        Temp.Y = "field";
+        Node[id]=Temp;
+    }
+
+
+    void insertObj(string typ, string id){
+        pair<string,string> Temp;
+        Temp.X = typ;
+        Temp.Y = "object";
+        Node[id]=Temp;
+    }
     void insertTemp(string typ, string id){
         pair<string,string> Temp;
         Temp.X = typ;
@@ -116,6 +149,26 @@ public :
         Temp_.Y=par_typs;
         Args[id]=Temp_;
     }
+
+    void insertStruct(string id, map<string,string> tmap){
+        pair<string,string> Temp;
+        Temp.X = "null";
+        Temp.Y = "struct";
+        Node[id]=Temp;
+
+        Smap[id]=tmap;
+    }
+
+    void insertClass(string id, map<string,string> tmap, map<string,pair<string, vector<string> > > tmap1){
+        pair<string,string> Temp;
+        Temp.X = "null";
+        Temp.Y = "class";
+        Node[id]=Temp;
+        cout<<"YOL "<<id<<" si: "<<(int)(tmap.size())<<endl;
+        Smap[id]=tmap;
+        Mtdmap[id]=tmap1;
+    }
+
 
     string getTemp(string typ){
         temp_count++;

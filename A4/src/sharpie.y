@@ -32,6 +32,8 @@ SymTable* CurTable;
 int CurLabel;
 int NumScopes;
 vector<pair<string,string> > par_var;
+bool CS_FLAG=true;
+string CS_Name;
 bool FLAG;
 
 string change_string(string s)
@@ -71,6 +73,9 @@ void BeginScope(){
     }
     /*cout<<" params: in "<<(CurTable->table_id)<<endl;*/
     FLAG=false;
+  }
+  if(CS_FLAG == true){
+    (CurTable->CSname)=CS_Name;
   }
   par_var.clear();
 }
@@ -264,7 +269,7 @@ void translate(Attr* &p, Attr* q, Attr* r, string OP, string ret_typ="int"){
 %type <NT> constructor_initializer destructor_declaration operator_body constructor_body struct_declaration struct_interfaces_opt struct_interfaces struct_body struct_member_declarations_opt struct_member_declarations 
 %type <NT> struct_member_declaration array_initializer variable_initializer_list_opt variable_initializer_list interface_declaration interface_base_opt interface_base interface_body interface_member_declarations_opt interface_member_declarations 
 %type <NT> interface_member_declaration interface_method_declaration new_opt interface_empty_body begin_scope eps
-%type <NT> print_statement read_statement
+%type <NT> print_statement read_statement struct_name class_name
 
 %start compilation_unit
 %%
@@ -463,23 +468,47 @@ member_access
 invocation_expression
   : primary_expression_no_parenthesis '(' argument_list_opt ')'
   | qualified_identifier '(' argument_list_opt ')' {
+      $$=new Attr();
+      bool isQI=($1->isQI);
       string FunName=($1->place);
-      if(!(CurTable->lookup(($1->place)))){
+      string Objname, CurCSname;
+      SymTable* DeclTbl;
+      if(isQI){
+	FunName=($1->QI.Y);
+	Objname = ($1->QI.X);
+	// TODO: check if object
+	if(!(CurTable->lookup(Objname))){
+	  cerr<<"Error Line "<<yylineno<<": "<<Objname<<" used without declared"<<endl;
+	  exit(0);
+	}
+	DeclTbl=getDeclScope(Objname, CurTable);
+	// TODO: check if this method is defined, parameter type
+	CurCSname = (DeclTbl->Node)[Objname].X;
+	DeclTbl=getDeclScope(CurCSname, CurTable);
+	/*cout<<"Class Name: "<<CurCSname<<" SIZE: "<<(DeclTbl->Smap)[CurCSname].size()<<endl;*/
+	for(auto flds : (DeclTbl->Smap)[CurCSname]){
+	  string typ_ = (flds.Y);
+	  string smtg_glob = CurCSname+"."+(flds.X);
+	  string smtg_ = (Objname)+"."+(flds.X);
+	  string code_="=,"+smtg_glob+","+smtg_;
+	  ($$->code).pb(code_);
+	}
+      }
+      if(!isQI && !(CurTable->lookup(($1->place)))){
 	cerr<<"Error Line "<<yylineno<<": Function "<<($1->place)<<" Not defined"<<endl;
 	exit(0);
       }
       // Already looked up
-      SymTable* DeclTbl=getDeclScope(FunName,CurTable);
+      DeclTbl=getDeclScope(FunName,CurTable);
       int arg_cnt=(int)($3->arg_lst).size();
-      if((DeclTbl->Node)[FunName].Y != "function"){
+      if(!isQI && (DeclTbl->Node)[FunName].Y != "function"){
 	cerr<<"Error Line "<<yylineno<<": "<<($1->place)<<" Ain't No function!"<<endl;
 	exit(0);
       }
-      if(arg_cnt  != (DeclTbl->Args)[FunName].X){
+      if(!isQI && arg_cnt  != (DeclTbl->Args)[FunName].X){
 	cerr<<"Error Line "<<yylineno<<": "<<($1->place)<<" Number of arguments don't match"<<endl;
 	exit(0);
       }
-      $$=new Attr();
       string code_;
       for(int i=0;i<arg_cnt;i++){
 	Attr* CurArg=($3->arg_lst)[i];
@@ -504,7 +533,13 @@ invocation_expression
 	}
 
       }
-      string RetType=(DeclTbl->Node)[FunName].X;
+      string RetType="void";
+      if(!isQI){
+	RetType=(DeclTbl->Node)[FunName].X;
+      }else{
+	DeclTbl=getDeclScope(Objname, CurTable);
+	RetType=(DeclTbl->Mtdmap)[CurCSname][FunName].X;
+      }
       string tp="NULL";
       if(RetType != "void"){
 	tp=CurTable->getTemp(RetType);
@@ -512,6 +547,16 @@ invocation_expression
       }
       code_="call,"+FunName+","+to_string(arg_cnt)+","+tp;
       ($$->code).pb(code_);
+      if(isQI){
+	DeclTbl=getDeclScope(CurCSname, CurTable);
+	for(auto flds : (DeclTbl->Smap)[CurCSname]){
+	  string typ_ = (flds.Y);
+	  string smtg_glob = CurCSname+"."+(flds.X);
+	  string smtg_ = (Objname)+"."+(flds.X);
+	  string code_="=,"+smtg_+","+smtg_glob;
+	  ($$->code).pb(code_);
+	}
+      }
   }
   ;
 argument_list_opt
@@ -572,10 +617,14 @@ base_access
   | BASE LEFT_BRACKET expression_list RIGHT_BRACKET
   ;
 new_expression
-  : object_creation_expression
+  : object_creation_expression {
+    $$=$1;
+  }
   ;
 object_creation_expression
-  : NEW type '(' argument_list_opt ')'
+  : NEW type '(' argument_list_opt ')' {
+    $$=$2;
+  }
   ;
 array_creation_expression
   : NEW non_array_type LEFT_BRACKET expression_list RIGHT_BRACKET rank_specifiers_opt array_initializer_opt
@@ -712,6 +761,7 @@ multiplicative_expression
     $$ = $1;
   }
   | multiplicative_expression '*' unary_expression {
+    /*cout<<"YO: "<<($1->place)<<endl;*/
     translate($$,$1,$3,"*");
     CheckTyp($1,$3,"int");
   }
@@ -1061,7 +1111,32 @@ local_variable_declaration
        */
     }
     $$=new Attr();
-    if($1->isarray == false){
+    bool lookuptyp=(CurTable->lookup($1->place));
+    bool CS=false;
+    SymTable* DeclTbl;
+    if(lookuptyp){
+      DeclTbl = getDeclScope($1->place, CurTable);
+      string smtg= (DeclTbl->Node)[($1->place)].Y;
+      if(smtg == "struct" || smtg == "class"){
+	CS=true;
+      }
+    }
+    if(CS){
+      for(int i=0;i<(int)($2->var_dec).size();i++){
+	Attr* CurVar = ($2->var_dec)[i];
+	// for sanity
+	(CurVar->place)=change_string((CurVar->place));
+	//           struct/class name, object name
+	(CurTable->insertObj($1->place, (CurVar->place)));
+	for(auto flds : (DeclTbl->Smap)[($1->place)]){
+	  string smtg = (CurVar->place)+"."+(flds.X);
+	  string typ_ = (flds.Y);
+	  (CurTable->insertVariable(typ_, smtg));
+	  string code_=(typ_)+","+smtg;
+	  ($$->code).pb(code_);
+	}
+      }
+    }else if($1->isarray == false){
 	string typ1=($1->type);
 	for(int i=0;i<(int)($2->var_dec).size();i++){
 	  Attr * CurVar = ($2->var_dec)[i];
@@ -1608,20 +1683,24 @@ qualified_identifier
  */
     if(CurTable->lookup(change_string($$->place))){
       SymTable* DeclTbl= getDeclScope(change_string($$->place),CurTable);
-      if((DeclTbl->Node)[change_string($$->place)].Y == "variable")
+      string smtg = (CurTable->CSname) + "." + $$->place;
+      if(CS_FLAG && (CurTable->lookup(smtg))){
+	$$->place = smtg;
+      }
+      else if((DeclTbl->Node)[change_string($$->place)].Y == "variable")
 	($$->place)+="_"+to_string(DeclTbl->table_id);
     }
 
   }
   | qualifier IDENTIFIER{
-    // not used
     $$=new Attr();
-    $$->place = string($2);
+    $$->place = ($1->place)+"."+string($2);
+    ($$->QI)=mp(($1->place), string($2));
+    ($$->isQI)=true;
   }
   ;
 qualifier
   : IDENTIFIER '.'{
-    // not used
     $$=new Attr();
     $$->place = string($1);
   }
@@ -1659,7 +1738,7 @@ namespace_member_declarations
   | namespace_member_declarations namespace_member_declaration {
     // not here
     $$=$1;
-    cerr<<"Not expected here"<<endl;
+    /*cerr<<"Not expected here"<<endl;*/
     Combine($$->code, $$->code, $2->code);
   }
   ;
@@ -1699,9 +1778,44 @@ modifier
   | PUBLIC
   ;
 class_declaration
-  : modifiers_opt CLASS IDENTIFIER class_base_opt class_body comma_opt {
+  : modifiers_opt CLASS class_name class_base_opt class_body comma_opt {
     // CLASS IDENTIFIER class_body
-    $$=$5;
+    /*$$=$5;*/
+    //  field_name, type
+    ($$->code)=($5->code);
+    map<string,string> tmap;
+    /*cout<<"SI: "<<(int)($5->fld_lst).size()<<endl;*/
+    for(int i=0;i<(int)($5->fld_lst).size();i++){
+      Attr* CurFld = ($5->fld_lst)[i];
+      string typ=(CurFld->fld).X;
+      /*cout<<"GFD "<<i<<endl;*/
+      for(int j=0;j<(int)((CurFld->fld).Y).size();j++){
+	Attr* CurFldElem = ((CurFld->fld).Y)[j];
+	// without "_"
+	tmap[(CurFldElem->place)]=typ;
+      }
+    }
+    // for methods
+    // method_name , <ret_typ, par_typs>
+    map<string,pair<string, vector<string> > > tmap1;
+    /*cout<<"SI: "<<(int)($5->fld_lst).size()<<endl;*/
+    for(int i=0;i<(int)($5->mtd_lst).size();i++){
+      Attr* CurMtd = ($5->mtd_lst)[i];
+      string typ=(CurMtd->fld).X;
+      pair<string, vector<string> > mtd_arg;
+      mtd_arg.X = (CurMtd->ret_typ);
+      mtd_arg.Y = (CurMtd->par_types);
+      tmap1[(CurMtd->place)]=mtd_arg;
+    }
+    (CurTable->insertClass($3->place, tmap, tmap1));
+  }
+  ;
+class_name
+  : IDENTIFIER {
+    $$=new Attr();
+    $$->place=string($1);
+    CS_FLAG=true;
+    CS_Name=string($1);
   }
   ;
 class_base_opt
@@ -1720,6 +1834,7 @@ interface_type_list
 class_body
   : '{' begin_scope class_member_declarations_opt '}' {
      $$=$3;
+     CS_FLAG=false;
      EndScope();
   }
   ;
@@ -1734,18 +1849,32 @@ class_member_declarations_opt
 class_member_declarations
   : class_member_declaration {
     $$=$1;
+    if(($1->is_field_decl)){
+      ($$->fld_lst).pb($1);
+    }
+    if(($1->is_method_decl)){
+      ($$->mtd_lst).pb($1);
+    }
   }
   | class_member_declarations class_member_declaration {
     $$=$1;
+    if(($2->is_field_decl)){
+      ($$->fld_lst).pb($2);
+    }
+    if(($2->is_method_decl)){
+      ($$->mtd_lst).pb($2);
+    }
     Combine($$->code, $$->code, $2->code);
   }
   ;
 class_member_declaration
   : field_declaration {
     $$=$1;
+    ($$->is_field_decl)=true;
   }
   | method_declaration {
     $$=$1;
+    ($$->is_method_decl)=true;
   }
   | operator_declaration {
     $$=$1;
@@ -1778,44 +1907,39 @@ field_declaration
        */
     }
     $$=new Attr();
+    $$->fld=mp($2->type, ($3->var_dec));
     if($2->isarray == false){
+	string typ1=($2->type);
 	for(int i=0;i<(int)($3->var_dec).size();i++){
 	  Attr * CurVar = ($3->var_dec)[i];
 	  // TODO:insert CurVar->place into table-> DONE!
 	  CurVar->place=change_string((CurVar->place));
+	
 	  CurTable->insertVariable(($2->type), CurVar->place);
-	  CurVar->place+="_"+to_string(CurTable->table_id);
-	  string code_=($2->type)+","+(CurVar->place);
+	  CurTable->insertField(($2->type), (CurTable->CSname)+"."+(CurVar->place));
+	  /*CurVar->place+="_"+to_string((CurTable->table_id));*/
+
+	  string code_=($2->type)+","+(CurTable->CSname) + "." + (CurVar->place);
 	  ($$->code).pb(code_);
 	  if(CurVar->init != NULL){
+
 	    Attr * CurVarInit=(CurVar->init);
 	    Combine($$->code,$$->code,CurVarInit->code);
 	    string code_=getTAC(2,"=",CurVar->place, CurVarInit->place);
 	    ($$->code).pb(code_);
-	  }
-	}
-    }else{
-       for(int i=0;i<(int)($3->var_dec).size();i++){
-	  Attr * CurVar = ($3->var_dec)[i];
-	  if(CurVar->init != NULL){
-	    Attr * CurVarInit=(CurVar->init);
-	    int ArrayLength=(CurVarInit->init_list).size();
-	    CurTable->insertArray(($2->elem)->type, CurVar->place);
-	    string code_="array,"+($2->elem)->type+","+to_string(ArrayLength)+","+CurVar->place;
-	    ($$->code).pb(code_);
-	    for(int j=0;j<(int)(CurVarInit->init_list).size();j++){
-	      Attr * CurVarInitElem = (CurVarInit->init_list)[j];
-	      int ElemWidth=($2->elem)->width;
-	      // TODO:update width for this array struct=len*Elemwidth
-	      code_="update,"+(CurVarInitElem->place)+","+(CurVar->place)+","+to_string(ElemWidth*j);
-	      Combine($$->code,$$->code,CurVarInitElem->code);
-	      ($$->code).pb(code_);
+
+	    // check declartion of initializer
+	    if(!(CurTable->lookup(change_string(CurVarInit->place)))){
+	      cerr<<"ERROR: Line: "<<(yylineno)<<" "<<(CurVarInit->place)<<" used without declaration."<<endl;
+	      exit(0);
 	    }
-	  }else{
-	    // default length 100 size array
-	    CurTable->insertArray(($2->elem)->type, CurVar->place);
-	    string code_="array,"+($2->elem)->type+",100,"+CurVar->place;
-	    ($$->code).pb(code_);
+	    // check type compatibility
+	    string typ2=getTyp(change_string(CurVarInit->place));
+	    if(typ1 != typ2){
+	      cerr<<"ERROR: Line: "<<(yylineno)<<" "<<(CurVarInit->place)<<" has type "<<typ2<<". Expected type "<<typ1<<endl;
+	      exit(0);
+	    }
+
 	  }
 	}
      }
@@ -1834,6 +1958,9 @@ method_declaration
       string ret_typ=($1->ret_typ);
       string method_name=($1->place);
       $$=new Attr();
+      ($$->place)=method_name;
+      ($$->ret_typ)=ret_typ;
+      ($$->par_types)=($1->par_types);
       string code_="function,"+method_name;
       ($$->code).pb(code_);
       int par_cnt=(int)($1->par_lst).size();
@@ -1876,6 +2003,7 @@ method_header
       par_var.pb(mp(typ, plc));
     }
     CurTable->insertFunc($$->place, $$->ret_typ, par_typs, par_cnt);
+    ($$->par_types)=par_typs;
   }
   | modifiers_opt VOID qualified_identifier '(' formal_parameter_list_opt ')' {
      $$=new Attr();
@@ -2020,8 +2148,30 @@ constructor_body
   | ';'
   ;
 struct_declaration
-  : modifiers_opt STRUCT IDENTIFIER struct_interfaces_opt struct_body comma_opt
+  : modifiers_opt STRUCT struct_name struct_interfaces_opt struct_body comma_opt{
+    //  field_name, type
+    map<string,string> tmap;
+    cout<<"SI: "<<(int)($5->fld_lst).size()<<endl;
+    for(int i=0;i<(int)($5->fld_lst).size();i++){
+      Attr* CurFld = ($5->fld_lst)[i];
+      string typ=(CurFld->fld).X;
+      cout<<"GFD "<<i<<endl;
+      for(int j=0;j<(int)((CurFld->fld).Y).size();j++){
+	Attr* CurFldElem = ((CurFld->fld).Y)[j];
+	// without "_"
+	tmap[(CurFldElem->place)]=typ;
+      }
+    }
+    (CurTable->insertStruct($3->place, tmap));
+  }
   ;
+struct_name
+  : IDENTIFIER{
+    $$=new Attr();
+    $$->place=string($1);
+    CS_FLAG=true;
+    CS_Name=string($1);
+  }
 struct_interfaces_opt
   : eps
   | struct_interfaces
@@ -2030,19 +2180,38 @@ struct_interfaces
   : ':' interface_type_list
   ;
 struct_body
-  : '{' struct_member_declarations_opt '}'
+  : '{' begin_scope struct_member_declarations_opt '}'{
+    $$=$3;
+    CS_FLAG=false;
+    EndScope();
+  }
   ;
 struct_member_declarations_opt
-  : eps
-  | struct_member_declarations
+  : eps {
+    $$=new Attr();
+  }
+  | struct_member_declarations {
+    $$=$1;
+  }
   ;
 struct_member_declarations
-  : struct_member_declaration
-  | struct_member_declarations struct_member_declaration
+  : struct_member_declaration {
+   $$=$1;
+   ($$->fld_lst).pb($1);
+  }
+  | struct_member_declarations struct_member_declaration {
+    $$=$1;
+   ($$->fld_lst).pb($2);
+  }
   ;
 struct_member_declaration
-  : field_declaration
-  | method_declaration
+  : field_declaration {
+    $$=$1;
+  }
+  | method_declaration {
+    // not used
+    $$=$1;
+  }
   | operator_declaration
   | constructor_declaration
   | type_declaration
@@ -2271,6 +2440,7 @@ int main(int argc, char** argv) {
     CurLabel=0;
     NumScopes=1;
     FLAG=false;
+    CS_FLAG=true;
     yyin = myfile;
     do {
     	yyparse();
