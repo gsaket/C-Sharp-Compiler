@@ -1,0 +1,16 @@
+#!/bin/bash
+
+file=$1
+#file_name=${file:5:5}
+test_folder="itest"
+tac_folder="tac"
+
+echo "Creating TAC"
+./bin/sharpie $test_folder/$file.cs >$tac_folder/$file.tac
+echo "Creating ASM"
+./bin/codegen $tac_folder/$file.tac >a.s
+echo "Creating Exec"
+gcc -m32 a.s
+echo "Done!"
+
+

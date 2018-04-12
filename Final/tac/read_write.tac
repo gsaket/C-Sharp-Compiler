@@ -1,0 +1,11 @@
+0,call,Main,0,NULL
+1,exit
+2,int,test3.b
+3,function,Main
+4,int,x_2
+5,=,x_2,10
+6,print,x_2,int
+7,int,a_2
+8,read,test3.b,int
+9,print,test3.b,int
+10,return,NULL
