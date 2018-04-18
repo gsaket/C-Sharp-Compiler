@@ -40,7 +40,7 @@ Group 12
     m.  Multiple Declarations and Sequential Assignments
         - Multiple Declarations  -> int a,b,c=3;
         - Sequential Assignments -> a=b=c=3;
-
+    n.  break,continue statements
 
 NOTE:
 Braces required in blocks (even if single statement) for if, else, while, for etc.
