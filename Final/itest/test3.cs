@@ -6,6 +6,7 @@ class Program {
             for (int j = 10; j > 1; j = j -1) {
                 k = 0;
                 k = k + 1;
+                Writeline(k);
             }
             while(num < 100){
                 num = num * 10;
@@ -15,5 +16,6 @@ class Program {
                 }
             }
         }
+    return 0;
     }
 }

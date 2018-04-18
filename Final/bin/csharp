@@ -6,6 +6,7 @@ test_folder="itest"
 tac_folder="tac"
 
 echo "Creating TAC"
+echo "./bin/sharpie $test_folder/$file.cs >$tac_folder/$file.tac"
 ./bin/sharpie $test_folder/$file.cs >$tac_folder/$file.tac
 echo "Creating ASM"
 ./bin/codegen $tac_folder/$file.tac >a.s

@@ -1,12 +1,13 @@
 class test3{
 	char Funccall(int a,char ch){
 		//a=a+1;
-		Writeline(a);
-		if(a == 5){
+		if(ch == 'b'){
 			ch = 'a';
+			Writeline(a);
 		}
 		else{
 			ch = 'b';
+			Writeline(a+100);
 		}
 		return ch;
 	}
@@ -18,11 +19,11 @@ class test3{
 		//Writeline(a);
 		//a=Funccall(66);
 		//Writeline(a);
-		char b;
-		Readline(b);
-		Writeline(b);
-		char t = Funccall(5,b);
-		Writeline(t);
+		//char b;
+		//Readline(b);
+		//Writeline(b);
+		char t = Funccall(5,'b');
+		//Writeline(t);
 	}
 }
 

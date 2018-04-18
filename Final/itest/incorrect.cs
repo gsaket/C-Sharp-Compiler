@@ -2,14 +2,18 @@ class Hello
 {
 	int Main() 
 	{
-		int i = 6;
-		string a;
-		for (;i<= 8 && i > 6 && i != 7; ++i){
+		int t=12;
+		int i = -2;
+		char a;
+		for (;i<= 8 && i != 7; ++i){
 			if (i >= 0){
-				a = "yes\n";
+				Writeline(200);
+				a = 'b';
 			}
 			else {
-				a = "no\n";
+				Writeline(t);
+				Writeline(i);
+				a = 't';
 			}
 		}
 		return 0;

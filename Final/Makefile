@@ -1,8 +1,8 @@
 bin/sharpie: build/lex.yy.c build/sharpie.tab.c build/sharpie.tab.h include/attr.h bin/codegen
-	g++ build/sharpie.tab.c build/lex.yy.c -lfl -o bin/sharpie
+	g++ -std=c++11 build/sharpie.tab.c build/lex.yy.c -lfl -o bin/sharpie
 
 bin/codegen: src/CodeGeneration.cpp
-	g++ src/CodeGeneration.cpp -o bin/codegen
+	g++ -std=c++11 src/CodeGeneration.cpp -o bin/codegen
 	chmod +x bin/csharp
 
 build/sharpie.tab.c build/sharpie.tab.h: src/sharpie.y include/attr.h
